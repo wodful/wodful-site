@@ -1,6 +1,7 @@
 import { Link } from "gatsby";
 import * as React from "react";
-import Phone from "../../images/mock-celular.svg";
+import PhoneFrame from "../../images/mock-celular-frame.svg";
+import PhoneScreen from "../../images/public-app-ranking.png";
 import { Container } from "../ui/Container";
 import { Section } from "../ui/Section";
 import { SectionHeading } from "../ui/SectionHeading";
@@ -49,11 +50,19 @@ export const Mobile = () => (
             className="absolute -inset-12 rounded-full bg-primary/15 blur-3xl"
             aria-hidden
           />
-          <img
-            className="relative w-full drop-shadow-2xl"
-            src={Phone}
-            alt="Aplicativo Wodful em um smartphone"
-          />
+          <div className="relative w-full drop-shadow-2xl">
+            <img
+              className="relative w-full"
+              src={PhoneFrame}
+              alt=""
+              aria-hidden
+            />
+            <img
+              className="absolute left-[6.9%] top-[12.3%] h-[87.7%] w-[85.7%] rounded-t-[4%] object-cover object-top"
+              src={PhoneScreen}
+              alt="Aplicativo Wodful em um smartphone"
+            />
+          </div>
         </div>
       </div>
     </Container>

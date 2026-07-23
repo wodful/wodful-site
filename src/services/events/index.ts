@@ -18,4 +18,12 @@ export class EventService {
 
     return event.data as unknown as TshirtSizeResponse;
   }
+
+  async getEventAffiliations(accessCode: string, query?: string): Promise<string[]> {
+    const search = query?.trim() ? `?q=${encodeURIComponent(query.trim())}` : "";
+    const url = this.path + `${accessCode.toUpperCase()}/affiliations${search}`;
+    const response: APIResponse<string[]> = await wodfulApi.get(url);
+
+    return (response.data as unknown as string[]) ?? [];
+  }
 }

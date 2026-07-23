@@ -2,7 +2,7 @@ import { navigate } from "gatsby";
 import * as React from "react";
 import { useEffect, useState } from "react";
 import Modal from "react-modal";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { SUBSCRIPTION_MAX_WIDTH_CLASS } from "../../constants/eventBanner";
 import ArrowRight from "../../images/arrow-right.svg";
 import Calendar from "../../images/calendar-black.svg";
@@ -20,10 +20,24 @@ import { SubscriptionService } from "../../services/subscription";
 import { isValidDocument, regexOnlyNumber } from "../../utils";
 import { formatPriceBRL } from "../../utils/formatPrice";
 import { Feedback } from "../Feedback";
+import { Combobox } from "../ui/Combobox";
 import { Container } from "../ui/Container";
 import { fieldInputClass, FormField } from "../ui/FormField";
 import { SubscriptionSkeleton } from "./SubscriptionSkeleton";
 import { SubscriptionSummary } from "./SubscriptionSummary";
+
+function normalizeAffiliation(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function resolveAffiliation(value: string, options: string[]) {
+  const normalized = normalizeAffiliation(value);
+  if (!normalized) return normalized;
+  const match = options.find(
+    (option) => option.toLowerCase() === normalized.toLowerCase()
+  );
+  return match ?? normalized;
+}
 type ISubscriptionData = {
   accessCode: string;
 };
@@ -53,6 +67,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
   const [ticket, setTicket] = useState<Ticket>();
   const [indexes, setIndexes] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [affiliations, setAffiliations] = useState<string[]>([]);
   const [tshirtConfigs, setTshirtConfigs] = useState<TshirtSizeResponse>(
     {} as TshirtSizeResponse
   );
@@ -63,6 +78,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
     handleSubmit,
     setError,
     watch,
+    control,
     formState: { errors, isValid },
   } = useForm<IParticipantForm & { couponCode?: string }>({
     mode: "all",
@@ -111,6 +127,13 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
         setTshirtConfigs(tshirtconfig)
       )
       .finally(() => setIsLoading(false));
+  }, []);
+
+  const getEventAffiliations = React.useCallback(async (access: string) => {
+    await new EventService()
+      .getEventAffiliations(access)
+      .then(setAffiliations)
+      .catch(() => setAffiliations([]));
   }, []);
 
   const getParticipant = React.useCallback(
@@ -258,6 +281,10 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
       participants: subscription.participants.map((participant) => ({
         ...participant,
         identificationCode: regexOnlyNumber(participant.identificationCode),
+        affiliation: resolveAffiliation(
+          participant.affiliation ?? "",
+          affiliations
+        ),
         tShirtSize:
           tshirtConfigs.hasTshirt === "true"
             ? participant.tShirtSize
@@ -284,7 +311,8 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
     if (!ticketStorage) navigate(`/event/${accessCode}/`);
     getEvent(accessCode, ticketStorage!.replaceAll('"', ""));
     getEventTshirt(accessCode);
-  }, [getEvent]);
+    getEventAffiliations(accessCode);
+  }, [accessCode, getEvent, getEventTshirt, getEventAffiliations]);
 
   useEffect(() => {
     setCouponValidation({ status: "idle" });
@@ -646,26 +674,35 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                                     label="Box do participante"
                                     error={participantErrors?.affiliation?.message}
                                   >
-                                    <input
-                                      id={`${participants}.affiliation`}
-                                      placeholder="CT Wodful"
-                                      type="text"
-                                      className={fieldInputClass(
-                                        !!participantErrors?.affiliation
-                                      )}
-                                      {...register(
-                                        `participants.${index}.affiliation`,
-                                        {
-                                          required: Validation.invalidEmpty,
-                                          minLength: {
-                                            value: 3,
-                                            message: Validation.invalidSM,
-                                          },
-                                          maxLength: {
-                                            value: 50,
-                                            message: Validation.invalidLG,
-                                          },
-                                        }
+                                    <Controller
+                                      name={`participants.${index}.affiliation`}
+                                      control={control}
+                                      rules={{
+                                        required: Validation.invalidEmpty,
+                                        minLength: {
+                                          value: 3,
+                                          message: Validation.invalidSM,
+                                        },
+                                        maxLength: {
+                                          value: 50,
+                                          message: Validation.invalidLG,
+                                        },
+                                      }}
+                                      render={({ field }) => (
+                                        <Combobox
+                                          id={`${participants}.affiliation`}
+                                          value={field.value ?? ""}
+                                          onChange={field.onChange}
+                                          onBlur={field.onBlur}
+                                          options={affiliations}
+                                          placeholder="Busque ou digite o box"
+                                          invalid={
+                                            !!participantErrors?.affiliation
+                                          }
+                                          resolveCanonical={(value, options) =>
+                                            resolveAffiliation(value, options)
+                                          }
+                                        />
                                       )}
                                     />
                                   </FormField>

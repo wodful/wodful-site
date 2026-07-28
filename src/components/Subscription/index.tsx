@@ -108,6 +108,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
     payerEmail: string;
     expiresAt: string;
   } | null>(null);
+  const paymentSectionRef = React.useRef<HTMLDivElement>(null);
 
   const {
     register,
@@ -391,6 +392,22 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
   useEffect(() => {
     setCouponValidation({ status: "idle" });
   }, [couponCode, ticket?.id]);
+
+  useEffect(() => {
+    if (step !== "review" || brickSession) return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step, brickSession]);
+
+  useEffect(() => {
+    if (!brickSession) return;
+    const frame = window.requestAnimationFrame(() => {
+      paymentSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [brickSession?.paymentId]);
 
   useEffect(() => {
     if (indexes.length <= 1) {
@@ -759,7 +776,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                             return (
                               <div
                                 key={index}
-                                className="overflow-hidden rounded-xl border border-gray-200/80 bg-white"
+                                className="rounded-xl border border-gray-200/80 bg-white"
                               >
                                 {isTeam ? (
                                   <button
@@ -1142,28 +1159,34 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                 </div>
 
                 {brickSession ? (
-                  <PaymentBrickPanel
-                    session={brickSession}
-                    onApproved={(subscriptionId) => {
-                      navigate(
-                        `/subscription-success?status=success&accessCode=${accessCode}&subscriptionId=${subscriptionId}`
-                      );
-                    }}
-                    onPending={(subscriptionId) => {
-                      navigate(
-                        `/subscription-success?status=pending&accessCode=${accessCode}&subscriptionId=${subscriptionId}&email=${encodeURIComponent(
-                          brickSession.payerEmail
-                        )}`
-                      );
-                    }}
-                    onRejected={(message) => {
-                      setCheckoutError(
-                        message ??
-                          "Pagamento não aprovado. Você pode tentar outra forma abaixo."
-                      );
-                    }}
-                    onHoldExpired={handleHoldExpired}
-                  />
+                  <div
+                    ref={paymentSectionRef}
+                    id="pagamento"
+                    className="scroll-mt-6"
+                  >
+                    <PaymentBrickPanel
+                      session={brickSession}
+                      onApproved={(subscriptionId) => {
+                        navigate(
+                          `/subscription-success?status=success&accessCode=${accessCode}&subscriptionId=${subscriptionId}`
+                        );
+                      }}
+                      onPending={(subscriptionId) => {
+                        navigate(
+                          `/subscription-success?status=pending&accessCode=${accessCode}&subscriptionId=${subscriptionId}&email=${encodeURIComponent(
+                            brickSession.payerEmail
+                          )}`
+                        );
+                      }}
+                      onRejected={(message) => {
+                        setCheckoutError(
+                          message ??
+                            "Pagamento não aprovado. Você pode tentar outra forma abaixo."
+                        );
+                      }}
+                      onHoldExpired={handleHoldExpired}
+                    />
+                  </div>
                 ) : null}
               </div>
             ) : null}

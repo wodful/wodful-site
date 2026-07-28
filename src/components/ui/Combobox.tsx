@@ -47,10 +47,10 @@ export function Combobox({
   const query = value.trim();
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase();
-    if (!q) return options.slice(0, 8);
+    if (!q) return options.slice(0, 12);
     return options
       .filter((option) => option.toLowerCase().includes(q))
-      .slice(0, 8);
+      .slice(0, 12);
   }, [options, query]);
 
   const exactMatch = React.useMemo(
@@ -60,6 +60,7 @@ export function Combobox({
 
   const showCreate = query.length >= 3 && !exactMatch;
   const itemCount = filtered.length + (showCreate ? 1 : 0);
+  const showList = open && !disabled;
 
   React.useEffect(() => {
     setHighlight(0);
@@ -117,7 +118,7 @@ export function Combobox({
   };
 
   return (
-    <div ref={rootRef} className="relative min-w-0">
+    <div ref={rootRef} className="relative z-30 min-w-0">
       <input
         id={id}
         type="text"
@@ -132,25 +133,33 @@ export function Combobox({
         disabled={disabled}
         placeholder={placeholder}
         value={value}
-        className={fieldInputClass(invalid || ariaInvalid === true || ariaInvalid === "true")}
+        className={fieldInputClass(
+          invalid || ariaInvalid === true || ariaInvalid === "true"
+        )}
         onChange={(event) => {
           onChange(event.target.value);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => {
-          const canonical = resolveCanonical(value, options);
-          if (canonical !== value) onChange(canonical);
-          onBlur?.();
+          // Delay so option mousedown/click can commit first
+          window.setTimeout(() => {
+            if (!rootRef.current?.contains(document.activeElement)) {
+              const canonical = resolveCanonical(value, options);
+              if (canonical !== value) onChange(canonical);
+              onBlur?.();
+              setOpen(false);
+            }
+          }, 0);
         }}
         onKeyDown={onKeyDown}
       />
 
-      {open && !disabled && itemCount > 0 ? (
+      {showList ? (
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
         >
           {filtered.map((option, index) => {
             const active = index === highlight;
@@ -188,8 +197,19 @@ export function Combobox({
                 onMouseEnter={() => setHighlight(filtered.length)}
               >
                 <span className="font-medium">Criar “{query}”</span>
-                <span className="text-xs text-gray-500">Novo box neste evento</span>
+                <span className="text-xs text-gray-500">
+                  Novo box neste evento
+                </span>
               </button>
+            </li>
+          ) : null}
+          {itemCount === 0 ? (
+            <li className="px-3 py-2 text-sm text-gray-500" role="presentation">
+              {query.length > 0 && query.length < 3
+                ? "Digite pelo menos 3 caracteres para criar um box."
+                : options.length === 0
+                  ? "Nenhum box cadastrado ainda. Digite para criar o primeiro."
+                  : "Nenhum box encontrado."}
             </li>
           ) : null}
         </ul>

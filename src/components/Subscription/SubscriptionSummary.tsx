@@ -136,7 +136,7 @@ export const SubscriptionSummary = ({
 
       {stickyMobileCta && showSubmit ? (
         <div
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
           <div className="mx-auto flex max-w-lg items-center gap-3">

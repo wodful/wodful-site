@@ -8,6 +8,9 @@ export type CheckoutResponse =
       status: "payment_required";
       subscriptionId: string;
       paymentId: string;
+      preferenceId: string;
+      amountFinal: number;
+      publicKey: string;
       paymentUrl: string;
       expiresAt: string;
     };

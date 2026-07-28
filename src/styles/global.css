@@ -51,10 +51,17 @@
     @apply outline-2 outline-offset-2 outline-primary;
   }
 
-  input,
+  input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
   textarea,
   select {
     @apply box-border h-10 rounded-md border border-gray-200 bg-white px-4 py-2 text-base text-gray-800;
+  }
+
+  /* Radios/checkboxes do Payment Brick (e nativos) não devem herdar altura/padding de input de texto */
+  input[type="radio"],
+  input[type="checkbox"] {
+    @apply h-auto w-auto max-w-none appearance-auto rounded-none border-0 bg-transparent p-0;
+    accent-color: #319795;
   }
 
   textarea {
@@ -109,4 +116,25 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Mercado Pago Payment Brick: isola radios/imagens de estilos globais */
+.mp-payment-brick input[type="radio"],
+.mp-payment-brick input[type="checkbox"] {
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+  min-width: 1.125rem !important;
+  min-height: 1.125rem !important;
+  max-width: 1.125rem !important;
+  max-height: 1.125rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 9999px !important;
+  box-sizing: border-box !important;
+}
+
+.mp-payment-brick img {
+  max-width: none;
 }

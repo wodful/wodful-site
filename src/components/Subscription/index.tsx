@@ -25,6 +25,7 @@ import {
   SubscriptionProgress,
   type SubscriptionStepId,
 } from "./SubscriptionProgress";
+import { PaymentBrickPanel } from "./PaymentBrickPanel";
 import { SubscriptionSkeleton } from "./SubscriptionSkeleton";
 import { SubscriptionSummary } from "./SubscriptionSummary";
 import { SubscriptionTermsStep } from "./SubscriptionTermsStep";
@@ -76,6 +77,16 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
   const [pendingSubmission, setPendingSubmission] = useState<
     (IParticipantForm & { couponCode?: string; ticketId: string }) | null
   >(null);
+  const [brickSession, setBrickSession] = useState<{
+    subscriptionId: string;
+    paymentId: string;
+    preferenceId: string;
+    amountFinal: number;
+    publicKey: string;
+    accessCode: string;
+    payerEmail: string;
+    expiresAt: string;
+  } | null>(null);
 
   const {
     register,
@@ -256,7 +267,16 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
           subscription.responsibleEmail
         );
 
-        window.location.href = result.paymentUrl;
+        setBrickSession({
+          subscriptionId: result.subscriptionId,
+          paymentId: result.paymentId,
+          preferenceId: result.preferenceId,
+          amountFinal: result.amountFinal,
+          publicKey: result.publicKey,
+          accessCode,
+          payerEmail: subscription.responsibleEmail,
+          expiresAt: result.expiresAt,
+        });
       } catch {
         setCheckoutError(
           "Não foi possível iniciar o pagamento. Revise os dados e tente novamente."
@@ -307,6 +327,16 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
     submitCheckout(pendingSubmission);
   };
 
+  const handleHoldExpired = React.useCallback(() => {
+    if (brickSession?.subscriptionId) {
+      sessionStorage.removeItem(`@Wodful:checkout:${brickSession.subscriptionId}`);
+    }
+    setBrickSession(null);
+    setCheckoutError(
+      "O tempo da reserva expirou e a vaga foi liberada. Clique em “Continuar para pagamento” para tentar novamente."
+    );
+  }, [brickSession?.subscriptionId]);
+
   const formatPhone = (phoneNumber: string) => {
     phoneNumber = regexOnlyNumber(phoneNumber);
     setValue("responsiblePhone", phoneNumber);
@@ -346,339 +376,233 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
             ) : null}
 
             {step === "form" ? (
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <input
-                type="hidden"
-                name="fake_field"
-                value={fake_field}
-                onChange={(e) => setFakeField(e.target.value)}
-              />
-
-              <button
-                type="button"
-                onClick={() => navigate(`/event/${accessCode}/`)}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              >
-                <img
-                  src={ArrowRight}
-                  alt=""
-                  className="h-5 w-5 rotate-180"
-                  aria-hidden
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <input
+                  type="hidden"
+                  name="fake_field"
+                  value={fake_field}
+                  onChange={(e) => setFakeField(e.target.value)}
                 />
-                Voltar
-              </button>
 
-              <header className="mt-4 border-b border-gray-200/80 pb-6 sm:mt-6">
-                <h1 className="text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-3xl">
-                  {event?.name}
-                </h1>
-                <ul className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-x-6">
-                  <li className="flex items-center gap-2 text-sm text-gray-600">
-                    <img
-                      src={Calendar}
-                      alt=""
-                      className="h-4 w-4 shrink-0 opacity-70"
-                      aria-hidden
-                    />
-                    <span>
-                      {event?.startDate} até {event?.endDate}
-                    </span>
-                  </li>
-                  {event?.address ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/event/${accessCode}/`)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <img
+                    src={ArrowRight}
+                    alt=""
+                    className="h-5 w-5 rotate-180"
+                    aria-hidden
+                  />
+                  Voltar
+                </button>
+
+                <header className="mt-4 border-b border-gray-200/80 pb-6 sm:mt-6">
+                  <h1 className="text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-3xl">
+                    {event?.name}
+                  </h1>
+                  <ul className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-x-6">
                     <li className="flex items-center gap-2 text-sm text-gray-600">
                       <img
-                        src={MapPin}
+                        src={Calendar}
                         alt=""
                         className="h-4 w-4 shrink-0 opacity-70"
                         aria-hidden
                       />
-                      <span>{event.address}</span>
+                      <span>
+                        {event?.startDate} até {event?.endDate}
+                      </span>
                     </li>
-                  ) : null}
-                </ul>
-              </header>
+                    {event?.address ? (
+                      <li className="flex items-center gap-2 text-sm text-gray-600">
+                        <img
+                          src={MapPin}
+                          alt=""
+                          className="h-4 w-4 shrink-0 opacity-70"
+                          aria-hidden
+                        />
+                        <span>{event.address}</span>
+                      </li>
+                    ) : null}
+                  </ul>
+                </header>
 
-              {ticket ? (
-                <div className="mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start lg:gap-10 xl:gap-12">
-                  <div className="min-w-0 space-y-8">
-                    <section aria-labelledby="dados-responsavel">
-                      <h2
-                        id="dados-responsavel"
-                        className="text-lg font-semibold text-gray-900"
-                      >
-                        Dados do responsável
-                      </h2>
-
-                      <div className="mt-5 space-y-4">
-                        <FormField
-                          id="nickname"
-                          label={
-                            ticket.category.members > 1
-                              ? "Nome do time"
-                              : "Nome ou Apelido"
-                          }
-                          error={errors.nickname?.message}
+                {ticket ? (
+                  <div className="mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start lg:gap-10 xl:gap-12">
+                    <div className="min-w-0 space-y-8">
+                      <section aria-labelledby="dados-responsavel">
+                        <h2
+                          id="dados-responsavel"
+                          className="text-lg font-semibold text-gray-900"
                         >
-                          <input
-                            autoFocus
-                            id="nickname"
-                            placeholder={
-                              ticket.category.members > 1
-                                ? "Wodful team"
-                                : "João da silva"
-                            }
-                            type="text"
-                            className={fieldInputClass(!!errors.nickname)}
-                            {...register("nickname", {
-                              onBlur: (ev) =>
-                                getParticipant({
-                                  accessCode: event?.accessCode!,
-                                  search: ev.target.value,
-                                  type: "nickname",
-                                }),
-                              required: Validation.invalidEmpty,
-                              minLength: {
-                                value: 3,
-                                message: Validation.invalidSM,
-                              },
-                              maxLength: {
-                                value: 50,
-                                message: Validation.invalidLG,
-                              },
-                            })}
-                          />
-                        </FormField>
+                          Dados do responsável
+                        </h2>
 
-                        <FormField
-                          id="responsibleName"
-                          label="Nome do responsável"
-                          error={errors.responsibleName?.message}
-                        >
-                          <input
-                            id="responsibleName"
-                            placeholder="João da silva"
-                            type="text"
-                            className={fieldInputClass(!!errors.responsibleName)}
-                            {...register("responsibleName", {
-                              required: Validation.invalidEmpty,
-                              minLength: {
-                                value: 3,
-                                message: Validation.invalidSM,
-                              },
-                              maxLength: {
-                                value: 50,
-                                message: Validation.invalidLG,
-                              },
-                            })}
-                          />
-                        </FormField>
-
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="mt-5 space-y-4">
                           <FormField
-                            id="responsibleEmail"
-                            label="E-mail do responsável"
-                            error={errors.responsibleEmail?.message}
+                            id="nickname"
+                            label={
+                              ticket.category.members > 1
+                                ? "Nome do time"
+                                : "Nome ou Apelido"
+                            }
+                            error={errors.nickname?.message}
                           >
                             <input
-                              id="responsibleEmail"
-                              placeholder="joao@email.com"
-                              type="email"
-                              className={fieldInputClass(!!errors.responsibleEmail)}
-                              {...register("responsibleEmail", {
+                              autoFocus
+                              id="nickname"
+                              placeholder={
+                                ticket.category.members > 1
+                                  ? "Wodful team"
+                                  : "João da silva"
+                              }
+                              type="text"
+                              className={fieldInputClass(!!errors.nickname)}
+                              {...register("nickname", {
+                                onBlur: (ev) =>
+                                  getParticipant({
+                                    accessCode: event?.accessCode!,
+                                    search: ev.target.value,
+                                    type: "nickname",
+                                  }),
                                 required: Validation.invalidEmpty,
                                 minLength: {
-                                  value: 4,
+                                  value: 3,
                                   message: Validation.invalidSM,
                                 },
                                 maxLength: {
                                   value: 50,
                                   message: Validation.invalidLG,
                                 },
-                                pattern: {
-                                  value:
-                                    /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                                  message: Validation.invalid,
-                                },
                               })}
                             />
                           </FormField>
 
                           <FormField
-                            id="responsiblePhone"
-                            label="Telefone do responsável"
-                            error={errors.responsiblePhone?.message}
+                            id="responsibleName"
+                            label="Nome do responsável"
+                            error={errors.responsibleName?.message}
                           >
                             <input
-                              id="responsiblePhone"
-                              placeholder="xx x xxxx-xxxx"
-                              type="tel"
-                              className={fieldInputClass(!!errors.responsiblePhone)}
-                              {...register("responsiblePhone", {
+                              id="responsibleName"
+                              placeholder="João da silva"
+                              type="text"
+                              className={fieldInputClass(!!errors.responsibleName)}
+                              {...register("responsibleName", {
                                 required: Validation.invalidEmpty,
                                 minLength: {
-                                  value: 9,
+                                  value: 3,
                                   message: Validation.invalidSM,
                                 },
                                 maxLength: {
-                                  value: 13,
+                                  value: 50,
                                   message: Validation.invalidLG,
-                                },
-                                onChange(event) {
-                                  formatPhone(event.target.value);
                                 },
                               })}
                             />
                           </FormField>
-                        </div>
-                      </div>
-                    </section>
 
-                    <section aria-labelledby="dados-participantes">
-                      <h2
-                        id="dados-participantes"
-                        className="text-lg font-semibold text-gray-900"
-                      >
-                        {ticket.category.members > 1
-                          ? "Dados dos participantes"
-                          : "Dados do participante"}
-                      </h2>
-
-                      <div className="mt-5 space-y-6">
-                        {indexes.map((index) => {
-                          const participants = `participants[${index}]`;
-                          const participantErrors = errors.participants?.[index];
-
-                          return (
-                            <div
-                              key={index}
-                              className="rounded-xl border border-gray-200/80 bg-white p-5 sm:p-6"
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <FormField
+                              id="responsibleEmail"
+                              label="E-mail do responsável"
+                              error={errors.responsibleEmail?.message}
                             >
-                              {indexes.length > 1 ? (
-                                <p className="mb-4 text-sm font-semibold text-gray-800">
-                                  Atleta {index + 1}
-                                </p>
-                              ) : null}
+                              <input
+                                id="responsibleEmail"
+                                placeholder="joao@email.com"
+                                type="email"
+                                className={fieldInputClass(!!errors.responsibleEmail)}
+                                {...register("responsibleEmail", {
+                                  required: Validation.invalidEmpty,
+                                  minLength: {
+                                    value: 4,
+                                    message: Validation.invalidSM,
+                                  },
+                                  maxLength: {
+                                    value: 50,
+                                    message: Validation.invalidLG,
+                                  },
+                                  pattern: {
+                                    value:
+                                      /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                    message: Validation.invalid,
+                                  },
+                                })}
+                              />
+                            </FormField>
 
-                              <div className="space-y-4">
-                                <FormField
-                                  id={`${participants}.name`}
-                                  label={indexes.length > 1 ? "Nome" : "Nome"}
-                                  error={participantErrors?.name?.message}
-                                >
-                                  <input
+                            <FormField
+                              id="responsiblePhone"
+                              label="Telefone do responsável"
+                              error={errors.responsiblePhone?.message}
+                            >
+                              <input
+                                id="responsiblePhone"
+                                placeholder="xx x xxxx-xxxx"
+                                type="tel"
+                                className={fieldInputClass(!!errors.responsiblePhone)}
+                                {...register("responsiblePhone", {
+                                  required: Validation.invalidEmpty,
+                                  minLength: {
+                                    value: 9,
+                                    message: Validation.invalidSM,
+                                  },
+                                  maxLength: {
+                                    value: 13,
+                                    message: Validation.invalidLG,
+                                  },
+                                  onChange(event) {
+                                    formatPhone(event.target.value);
+                                  },
+                                })}
+                              />
+                            </FormField>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section aria-labelledby="dados-participantes">
+                        <h2
+                          id="dados-participantes"
+                          className="text-lg font-semibold text-gray-900"
+                        >
+                          {ticket.category.members > 1
+                            ? "Dados dos participantes"
+                            : "Dados do participante"}
+                        </h2>
+
+                        <div className="mt-5 space-y-6">
+                          {indexes.map((index) => {
+                            const participants = `participants[${index}]`;
+                            const participantErrors = errors.participants?.[index];
+
+                            return (
+                              <div
+                                key={index}
+                                className="rounded-xl border border-gray-200/80 bg-white p-5 sm:p-6"
+                              >
+                                {indexes.length > 1 ? (
+                                  <p className="mb-4 text-sm font-semibold text-gray-800">
+                                    Atleta {index + 1}
+                                  </p>
+                                ) : null}
+
+                                <div className="space-y-4">
+                                  <FormField
                                     id={`${participants}.name`}
-                                    placeholder="João da silva"
-                                    type="text"
-                                    className={fieldInputClass(
-                                      !!participantErrors?.name
-                                    )}
-                                    {...register(`participants.${index}.name`, {
-                                      required: Validation.invalidEmpty,
-                                      minLength: {
-                                        value: 4,
-                                        message: Validation.invalidSM,
-                                      },
-                                      maxLength: {
-                                        value: 50,
-                                        message: Validation.invalidLG,
-                                      },
-                                    })}
-                                  />
-                                </FormField>
-
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                  <FormField
-                                    id={`${participants}.identificationCode`}
-                                    label="Documento"
-                                    error={
-                                      participantErrors?.identificationCode
-                                        ?.message
-                                    }
+                                    label={indexes.length > 1 ? "Nome" : "Nome"}
+                                    error={participantErrors?.name?.message}
                                   >
                                     <input
-                                      id={`${participants}.identificationCode`}
-                                      placeholder="CPF"
-                                      type="tel"
-                                      className={fieldInputClass(
-                                        !!participantErrors?.identificationCode
-                                      )}
-                                      {...register(
-                                        `participants.${index}.identificationCode`,
-                                        {
-                                          required: Validation.invalidEmpty,
-                                          onBlur: (ev) =>
-                                            getParticipant({
-                                              accessCode: event?.accessCode!,
-                                              search: ev.target.value,
-                                              type: "code",
-                                              index,
-                                            }),
-                                          minLength: {
-                                            value: 11,
-                                            message: "Mínimo 11 caracteres",
-                                          },
-                                          onChange(event) {
-                                            formatDocument(
-                                              event.target.value,
-                                              index
-                                            );
-                                          },
-                                          validate: (value) =>
-                                            isValidDocument(value) ||
-                                            Validation.invalid,
-                                        }
-                                      )}
-                                    />
-                                  </FormField>
-
-                                  <FormField
-                                    id={`${participants}.tShirtSize`}
-                                    label="Camiseta"
-                                    error={participantErrors?.tShirtSize?.message}
-                                  >
-                                    <select
-                                      id={`${participants}.tShirtSize`}
-                                      disabled={tshirtConfigs?.hasTshirt === "false"}
-                                      className={fieldInputClass(
-                                        !!participantErrors?.tShirtSize
-                                      )}
-                                      {...register(
-                                        `participants.${index}.tShirtSize`,
-                                        {
-                                          required: Validation.invalidEmpty,
-                                          disabled:
-                                            tshirtConfigs?.hasTshirt === "false",
-                                        }
-                                      )}
-                                    >
-                                      <option value="">
-                                        {tshirtConfigs?.hasTshirt === "true"
-                                          ? "Selecione um tamanho"
-                                          : "Sem camiseta"}
-                                      </option>
-                                      {tshirtConfigs?.tShirtSizes?.map((size) => (
-                                        <option key={size} value={size}>
-                                          {size}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </FormField>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                  <FormField
-                                    id={`${participants}.city`}
-                                    label="Cidade"
-                                    error={participantErrors?.city?.message}
-                                  >
-                                    <input
-                                      id={`${participants}.city`}
-                                      placeholder="Rua do wodful, paraná"
+                                      id={`${participants}.name`}
+                                      placeholder="João da silva"
                                       type="text"
                                       className={fieldInputClass(
-                                        !!participantErrors?.city
+                                        !!participantErrors?.name
                                       )}
-                                      {...register(`participants.${index}.city`, {
+                                      {...register(`participants.${index}.name`, {
                                         required: Validation.invalidEmpty,
                                         minLength: {
                                           value: 4,
@@ -692,201 +616,345 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                                     />
                                   </FormField>
 
-                                  <FormField
-                                    id={`${participants}.affiliation`}
-                                    label="Box do participante"
-                                    error={participantErrors?.affiliation?.message}
-                                  >
-                                    <Controller
-                                      name={`participants.${index}.affiliation`}
-                                      control={control}
-                                      rules={{
-                                        required: Validation.invalidEmpty,
-                                        minLength: {
-                                          value: 3,
-                                          message: Validation.invalidSM,
-                                        },
-                                        maxLength: {
-                                          value: 50,
-                                          message: Validation.invalidLG,
-                                        },
-                                      }}
-                                      render={({ field }) => (
-                                        <Combobox
-                                          id={`${participants}.affiliation`}
-                                          value={field.value ?? ""}
-                                          onChange={field.onChange}
-                                          onBlur={field.onBlur}
-                                          options={affiliations}
-                                          placeholder="Busque ou digite o box"
-                                          invalid={
-                                            !!participantErrors?.affiliation
+                                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <FormField
+                                      id={`${participants}.identificationCode`}
+                                      label="Documento"
+                                      error={
+                                        participantErrors?.identificationCode
+                                          ?.message
+                                      }
+                                    >
+                                      <input
+                                        id={`${participants}.identificationCode`}
+                                        placeholder="CPF"
+                                        type="tel"
+                                        className={fieldInputClass(
+                                          !!participantErrors?.identificationCode
+                                        )}
+                                        {...register(
+                                          `participants.${index}.identificationCode`,
+                                          {
+                                            required: Validation.invalidEmpty,
+                                            onBlur: (ev) =>
+                                              getParticipant({
+                                                accessCode: event?.accessCode!,
+                                                search: ev.target.value,
+                                                type: "code",
+                                                index,
+                                              }),
+                                            minLength: {
+                                              value: 11,
+                                              message: "Mínimo 11 caracteres",
+                                            },
+                                            onChange(event) {
+                                              formatDocument(
+                                                event.target.value,
+                                                index
+                                              );
+                                            },
+                                            validate: (value) =>
+                                              isValidDocument(value) ||
+                                              Validation.invalid,
                                           }
-                                          resolveCanonical={(value, options) =>
-                                            resolveAffiliation(value, options)
+                                        )}
+                                      />
+                                    </FormField>
+
+                                    <FormField
+                                      id={`${participants}.tShirtSize`}
+                                      label="Camiseta"
+                                      error={participantErrors?.tShirtSize?.message}
+                                    >
+                                      <select
+                                        id={`${participants}.tShirtSize`}
+                                        disabled={tshirtConfigs?.hasTshirt === "false"}
+                                        className={fieldInputClass(
+                                          !!participantErrors?.tShirtSize
+                                        )}
+                                        {...register(
+                                          `participants.${index}.tShirtSize`,
+                                          {
+                                            required: Validation.invalidEmpty,
+                                            disabled:
+                                              tshirtConfigs?.hasTshirt === "false",
                                           }
-                                        />
-                                      )}
-                                    />
-                                  </FormField>
+                                        )}
+                                      >
+                                        <option value="">
+                                          {tshirtConfigs?.hasTshirt === "true"
+                                            ? "Selecione um tamanho"
+                                            : "Sem camiseta"}
+                                        </option>
+                                        {tshirtConfigs?.tShirtSizes?.map((size) => (
+                                          <option key={size} value={size}>
+                                            {size}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </FormField>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <FormField
+                                      id={`${participants}.city`}
+                                      label="Cidade"
+                                      error={participantErrors?.city?.message}
+                                    >
+                                      <input
+                                        id={`${participants}.city`}
+                                        placeholder="Rua do wodful, paraná"
+                                        type="text"
+                                        className={fieldInputClass(
+                                          !!participantErrors?.city
+                                        )}
+                                        {...register(`participants.${index}.city`, {
+                                          required: Validation.invalidEmpty,
+                                          minLength: {
+                                            value: 4,
+                                            message: Validation.invalidSM,
+                                          },
+                                          maxLength: {
+                                            value: 50,
+                                            message: Validation.invalidLG,
+                                          },
+                                        })}
+                                      />
+                                    </FormField>
+
+                                    <FormField
+                                      id={`${participants}.affiliation`}
+                                      label="Box do participante"
+                                      error={participantErrors?.affiliation?.message}
+                                    >
+                                      <Controller
+                                        name={`participants.${index}.affiliation`}
+                                        control={control}
+                                        rules={{
+                                          required: Validation.invalidEmpty,
+                                          minLength: {
+                                            value: 3,
+                                            message: Validation.invalidSM,
+                                          },
+                                          maxLength: {
+                                            value: 50,
+                                            message: Validation.invalidLG,
+                                          },
+                                        }}
+                                        render={({ field }) => (
+                                          <Combobox
+                                            id={`${participants}.affiliation`}
+                                            value={field.value ?? ""}
+                                            onChange={field.onChange}
+                                            onBlur={field.onBlur}
+                                            options={affiliations}
+                                            placeholder="Busque ou digite o box"
+                                            invalid={
+                                              !!participantErrors?.affiliation
+                                            }
+                                            resolveCanonical={(value, options) =>
+                                              resolveAffiliation(value, options)
+                                            }
+                                          />
+                                        )}
+                                      />
+                                    </FormField>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </section>
-
-                    <section aria-labelledby="cupom-desconto">
-                      <FormField
-                        id="couponCode"
-                        label="Cupom de desconto (opcional)"
-                        error={
-                          couponValidation.status === "invalid"
-                            ? couponValidation.message
-                            : undefined
-                        }
-                      >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-                          <input
-                            id="couponCode"
-                            placeholder="INSIRA SEU CUPOM AQUI"
-                            type="text"
-                            className={`${fieldInputClass(false)} sm:flex-1`}
-                            {...register("couponCode", {
-                              setValueAs: (v) =>
-                                typeof v === "string"
-                                  ? v.toUpperCase().trim()
-                                  : v,
-                            })}
-                          />
-                          <button
-                            type="button"
-                            onClick={applyCoupon}
-                            disabled={
-                              !couponCode ||
-                              couponValidation.status === "loading"
-                            }
-                            className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg border border-primary bg-primary/5 px-5 text-sm font-semibold text-primary transition hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[7.5rem]"
-                          >
-                            {couponValidation.status === "loading"
-                              ? "Aplicando..."
-                              : "Aplicar"}
-                          </button>
+                            );
+                          })}
                         </div>
-                        {couponValidation.status === "valid" &&
-                        couponValidation.message ? (
-                          <span className="text-sm text-emerald-600" role="status">
-                            {couponValidation.message}
-                          </span>
-                        ) : null}
-                      </FormField>
-                    </section>
-                  </div>
+                      </section>
 
-                  <div className="mt-8 lg:mt-0 lg:sticky lg:top-6">
-                    <SubscriptionSummary
-                      ticket={ticket}
-                      discounted={discounted}
-                      discountBadgeText={discountBadgeText}
-                      ticketPriceNumber={ticketPriceNumber}
-                      canSubmit={canSubmit}
-                      submitLabel="Revisar inscrição"
-                      helperText="Na próxima etapa você confere os dados antes do pagamento."
-                    />
+                      <section aria-labelledby="cupom-desconto">
+                        <FormField
+                          id="couponCode"
+                          label="Cupom de desconto (opcional)"
+                          error={
+                            couponValidation.status === "invalid"
+                              ? couponValidation.message
+                              : undefined
+                          }
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                            <input
+                              id="couponCode"
+                              placeholder="INSIRA SEU CUPOM AQUI"
+                              type="text"
+                              className={`${fieldInputClass(false)} sm:flex-1`}
+                              {...register("couponCode", {
+                                setValueAs: (v) =>
+                                  typeof v === "string"
+                                    ? v.toUpperCase().trim()
+                                    : v,
+                              })}
+                            />
+                            <button
+                              type="button"
+                              onClick={applyCoupon}
+                              disabled={
+                                !couponCode ||
+                                couponValidation.status === "loading"
+                              }
+                              className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg border border-primary bg-primary/5 px-5 text-sm font-semibold text-primary transition hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[7.5rem]"
+                            >
+                              {couponValidation.status === "loading"
+                                ? "Aplicando..."
+                                : "Aplicar"}
+                            </button>
+                          </div>
+                          {couponValidation.status === "valid" &&
+                            couponValidation.message ? (
+                            <span className="text-sm text-emerald-600" role="status">
+                              {couponValidation.message}
+                            </span>
+                          ) : null}
+                        </FormField>
+                      </section>
+                    </div>
+
+                    <div className="mt-8 lg:mt-0 lg:sticky lg:top-6">
+                      <SubscriptionSummary
+                        ticket={ticket}
+                        discounted={discounted}
+                        discountBadgeText={discountBadgeText}
+                        ticketPriceNumber={ticketPriceNumber}
+                        canSubmit={canSubmit}
+                        submitLabel="Revisar inscrição"
+                        helperText="Na próxima etapa você confere os dados antes do pagamento."
+                      />
+                    </div>
                   </div>
+                ) : null}
+
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setStep("terms")}
+                    className="text-sm font-medium text-gray-600 hover:text-primary"
+                  >
+                    ← Voltar aos termos
+                  </button>
                 </div>
-              ) : null}
-
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => setStep("terms")}
-                  className="text-sm font-medium text-gray-600 hover:text-primary"
-                >
-                  ← Voltar aos termos
-                </button>
-              </div>
-            </form>
+              </form>
             ) : null}
 
             {step === "review" && ticket && pendingSubmission ? (
-              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <section className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm sm:p-8">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Revise antes de pagar
-                  </h2>
-                  <p className="mt-2 text-sm text-gray-600">
-                    Confira os dados abaixo. A inscrição só será confirmada após
-                    a aprovação do pagamento no Mercado Pago.
-                  </p>
+              <div className="space-y-6">
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+                  <section className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm sm:p-8">
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {brickSession
+                        ? "Finalize o pagamento"
+                        : "Revise antes de pagar"}
+                    </h2>
+                    <p className="mt-2 text-sm text-gray-600">
+                      {brickSession
+                        ? "Escolha a forma de pagamento abaixo. A inscrição só será confirmada após a aprovação."
+                        : "Confira os dados abaixo. Em seguida você paga nesta mesma página."}
+                    </p>
 
-                  <dl className="mt-6 space-y-4 text-sm">
-                    <div>
-                      <dt className="text-gray-500">Responsável</dt>
-                      <dd className="font-medium text-gray-900">
-                        {pendingSubmission.responsibleName}
-                      </dd>
-                      <dd className="text-gray-700">
-                        {pendingSubmission.responsibleEmail} ·{" "}
-                        {pendingSubmission.responsiblePhone}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Time / apelido</dt>
-                      <dd className="font-medium text-gray-900">
-                        {pendingSubmission.nickname}
-                      </dd>
-                    </div>
-                    {pendingSubmission.participants.map((participant, index) => (
-                      <div key={`review-${index}`}>
-                        <dt className="text-gray-500">Atleta {index + 1}</dt>
+                    <dl className="mt-6 space-y-4 text-sm">
+                      <div>
+                        <dt className="text-gray-500">Responsável</dt>
                         <dd className="font-medium text-gray-900">
-                          {participant.name}
+                          {pendingSubmission.responsibleName}
                         </dd>
                         <dd className="text-gray-700">
-                          {participant.affiliation} · {participant.city}
+                          {pendingSubmission.responsibleEmail} ·{" "}
+                          {pendingSubmission.responsiblePhone}
                         </dd>
                       </div>
-                    ))}
-                  </dl>
+                      <div>
+                        <dt className="text-gray-500">Time / apelido</dt>
+                        <dd className="font-medium text-gray-900">
+                          {pendingSubmission.nickname}
+                        </dd>
+                      </div>
+                      {pendingSubmission.participants.map((participant, index) => (
+                        <div key={`review-${index}`}>
+                          <dt className="text-gray-500">Atleta {index + 1}</dt>
+                          <dd className="font-medium text-gray-900">
+                            {participant.name}
+                          </dd>
+                          <dd className="text-gray-700">
+                            {participant.affiliation} · {participant.city}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
 
-                  {checkoutError ? (
-                    <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-                      {checkoutError}
-                    </p>
-                  ) : null}
+                    {checkoutError ? (
+                      <p
+                        className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
+                        role="alert"
+                      >
+                        {checkoutError}
+                      </p>
+                    ) : null}
 
-                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setStep("form")}
-                      className="text-sm font-medium text-gray-600 hover:text-primary"
-                    >
-                      ← Editar dados
-                    </button>
-                  </div>
-                </section>
+                    {!brickSession ? (
+                      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                        <button
+                          type="button"
+                          onClick={() => setStep("form")}
+                          className="text-sm font-medium text-gray-600 hover:text-primary"
+                        >
+                          ← Editar dados
+                        </button>
+                      </div>
+                    ) : null}
+                  </section>
 
-                <SubscriptionSummary
-                  ticket={ticket}
-                  discounted={discounted}
-                  discountBadgeText={discountBadgeText}
-                  ticketPriceNumber={ticketPriceNumber}
-                  canSubmit={!checkoutLoading}
-                  submitLabel={
-                    discounted && discounted.final <= 0
-                      ? "Confirmar inscrição gratuita"
-                      : "Ir para pagamento"
-                  }
-                  helperText={
-                    discounted && discounted.final <= 0
-                      ? "Cupom aplicado — confirmação imediata."
-                      : "Você será redirecionado ao Mercado Pago. PIX e cartão podem ficar pendentes até a confirmação."
-                  }
-                  loading={checkoutLoading}
-                  onContinue={handleConfirmCheckout}
-                />
+                  <SubscriptionSummary
+                    ticket={ticket}
+                    discounted={discounted}
+                    discountBadgeText={discountBadgeText}
+                    ticketPriceNumber={ticketPriceNumber}
+                    canSubmit={!checkoutLoading && !brickSession}
+                    showSubmit={!brickSession}
+                    submitLabel={
+                      discounted && discounted.final <= 0
+                        ? "Confirmar inscrição gratuita"
+                        : "Continuar para pagamento"
+                    }
+                    helperText={
+                      brickSession
+                        ? "Pague com cartão ou PIX nesta página."
+                        : discounted && discounted.final <= 0
+                          ? "Cupom aplicado — confirmação imediata."
+                          : "Você permanece nesta página para pagar com cartão ou PIX."
+                    }
+                    loading={checkoutLoading}
+                    onContinue={handleConfirmCheckout}
+                  />
+                </div>
+
+                {brickSession ? (
+                  <PaymentBrickPanel
+                    session={brickSession}
+                    onApproved={(subscriptionId) => {
+                      navigate(
+                        `/subscription-success?status=success&accessCode=${accessCode}&subscriptionId=${subscriptionId}`
+                      );
+                    }}
+                    onPending={(subscriptionId) => {
+                      navigate(
+                        `/subscription-success?status=pending&accessCode=${accessCode}&subscriptionId=${subscriptionId}&email=${encodeURIComponent(
+                          brickSession.payerEmail
+                        )}`
+                      );
+                    }}
+                    onRejected={(message) => {
+                      setCheckoutError(
+                        message ??
+                          "Pagamento não aprovado. Você pode tentar outra forma abaixo."
+                      );
+                    }}
+                    onHoldExpired={handleHoldExpired}
+                  />
+                ) : null}
               </div>
             ) : null}
           </Container>

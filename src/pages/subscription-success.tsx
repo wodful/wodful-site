@@ -17,9 +17,9 @@ function getStatusFromSearch(search: string | undefined): "success" | "pending" 
   return "success";
 }
 
-function getAccessCodeFromSearch(search: string | undefined): string | undefined {
+function getQueryParam(search: string | undefined, key: string): string | undefined {
   if (!search) return undefined;
-  return new URLSearchParams(search).get("accessCode") ?? undefined;
+  return new URLSearchParams(search).get(key) ?? undefined;
 }
 
 export default function SubscriptionSuccess({ location }: PageProps) {
@@ -27,19 +27,32 @@ export default function SubscriptionSuccess({ location }: PageProps) {
     () => getStatusFromSearch(location?.search)
   );
   const [accessCode, setAccessCode] = React.useState<string | undefined>(
-    () => getAccessCodeFromSearch(location?.search)
+    () => getQueryParam(location?.search, "accessCode")
+  );
+  const [subscriptionId, setSubscriptionId] = React.useState<string | undefined>(
+    () => getQueryParam(location?.search, "subscriptionId")
+  );
+  const [email, setEmail] = React.useState<string | undefined>(
+    () => getQueryParam(location?.search, "email")
   );
 
   React.useEffect(() => {
     const search = typeof window !== "undefined" ? window.location.search : location?.search;
     setStatus(getStatusFromSearch(search));
-    setAccessCode(getAccessCodeFromSearch(search));
+    setAccessCode(getQueryParam(search, "accessCode"));
+    setSubscriptionId(getQueryParam(search, "subscriptionId"));
+    setEmail(getQueryParam(search, "email"));
   }, [location?.search]);
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header isSimple />
-      <Success status={status} accessCode={accessCode} />
+      <Success
+        status={status}
+        accessCode={accessCode}
+        subscriptionId={subscriptionId}
+        email={email}
+      />
       <Footer isSimple />
     </div>
   );

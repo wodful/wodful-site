@@ -36,6 +36,30 @@ export class PaymentsService {
     return response.data;
   }
 
+  async processBrickPayment(payload: {
+    paymentId: string;
+    formData: Record<string, unknown>;
+  }): Promise<{
+    status: "approved" | "pending" | "rejected";
+    paymentId: string;
+    subscriptionId: string;
+  }> {
+    try {
+      const response = await wodfulApi.post<{
+        status: "approved" | "pending" | "rejected";
+        paymentId: string;
+        subscriptionId: string;
+      }>("/payments/brick", payload);
+      return response.data;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ??
+        err?.message ??
+        "Não foi possível processar o pagamento";
+      throw new Error(message);
+    }
+  }
+
   async validateCoupon(payload: {
     ticketId: string;
     couponCode: string;

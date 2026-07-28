@@ -15,7 +15,6 @@ export interface Ticket {
   description: string;
   price: string;
   name: string;
-  paymentLink: string | null;
   category: Category;
 }
 

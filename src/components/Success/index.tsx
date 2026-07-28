@@ -1,6 +1,7 @@
 import { navigate } from "gatsby";
 import * as React from "react";
 import { WHATSAPP_NUMBER } from "../../constants/whatsapp";
+import { SubscriptionService } from "../../services/subscription";
 import { LottiePlayer } from "../LottiePlayer";
 import { Button } from "../ui/Button";
 import { Container } from "../ui/Container";
@@ -10,6 +11,8 @@ type ReturnStatus = "success" | "pending" | "failure";
 interface SuccessProps {
   status?: ReturnStatus;
   accessCode?: string;
+  subscriptionId?: string;
+  email?: string;
 }
 
 const LOTTIE_BY_STATUS: Record<ReturnStatus, string> = {
@@ -29,32 +32,29 @@ const content: Record<
     badge: "Inscrição confirmada",
     title: "Pagamento confirmado!",
     message:
-      "Sua inscrição foi concluída com sucesso e já está garantida. Fique de olho no seu celular e nas nossas redes sociais para receber novidades sobre o evento.",
+      "Sua inscrição foi concluída com sucesso e já está garantida. Fique de olho no seu e-mail para receber novidades sobre o evento.",
     button: "Voltar ao evento",
   },
   pending: {
     badge: "Aguardando confirmação",
     title: "Pagamento pendente",
     message:
-      "Seu pagamento está em análise. Assim que for confirmado, sua inscrição será aprovada e você receberá uma confirmação por e-mail.",
+      "Seu pagamento ainda não foi confirmado — a inscrição não está garantida. Assim que o Mercado Pago aprovar (PIX, boleto ou análise de cartão), você receberá a confirmação por e-mail.",
     button: "Voltar ao evento",
   },
   failure: {
-    badge: "Pagamento recusado",
+    badge: "Pagamento não concluído",
     title: "Pagamento não aprovado",
     message:
-      "Não foi possível concluir seu pagamento. Você pode tentar novamente ou escolher outra forma de pagamento.",
-    button: "Tentar novamente",
+      "Não foi possível concluir o pagamento. Sua inscrição não foi confirmada — você pode tentar novamente com o mesmo cadastro.",
+    button: "Voltar ao evento",
   },
 };
 
 const badgeClasses: Record<ReturnStatus, string> = {
-  success:
-    "bg-emerald-50 text-emerald-700 ring-emerald-200/80",
-  pending:
-    "bg-amber-50 text-amber-800 ring-amber-200/80",
-  failure:
-    "bg-red-50 text-red-700 ring-red-200/80",
+  success: "bg-emerald-50 text-emerald-700 ring-emerald-200/80",
+  pending: "bg-amber-50 text-amber-800 ring-amber-200/80",
+  failure: "bg-red-50 text-red-700 ring-red-200/80",
 };
 
 function supportWhatsAppUrl() {
@@ -62,10 +62,48 @@ function supportWhatsAppUrl() {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 }
 
-export const Success = ({ status = "success", accessCode }: SuccessProps) => {
+const subscriptionService = new SubscriptionService();
+
+export const Success = ({
+  status = "success",
+  accessCode,
+  subscriptionId,
+  email,
+}: SuccessProps) => {
   const { badge, title, message, button } = content[status];
   const backPath = accessCode ? `/event/${accessCode}/` : "/";
   const buttonLabel = accessCode ? button : "Voltar ao início";
+  const [retryLoading, setRetryLoading] = React.useState(false);
+  const [retryError, setRetryError] = React.useState<string | null>(null);
+
+  const resolvedEmail =
+    email ??
+    (subscriptionId
+      ? sessionStorage.getItem(`@Wodful:checkout:${subscriptionId}`)
+      : null) ??
+    undefined;
+
+  const canRetry =
+    (status === "failure" || status === "pending") &&
+    subscriptionId &&
+    resolvedEmail;
+
+  async function handleRetryPayment() {
+    if (!subscriptionId || !resolvedEmail) return;
+    setRetryLoading(true);
+    setRetryError(null);
+    try {
+      const result = await subscriptionService.retryPayment(
+        subscriptionId,
+        resolvedEmail
+      );
+      window.location.href = result.paymentUrl;
+    } catch {
+      setRetryError("Não foi possível gerar um novo link de pagamento.");
+    } finally {
+      setRetryLoading(false);
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-gray-900">
@@ -81,39 +119,54 @@ export const Success = ({ status = "success", accessCode }: SuccessProps) => {
             />
 
             <span
-              className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ring-1 ${badgeClasses[status]}`}
+              className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${badgeClasses[status]}`}
             >
               {badge}
             </span>
 
-            <h1 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-[26px]">
-              {title}
-            </h1>
-
-            <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-gray-600">
+            <h1 className="mt-4 text-2xl font-bold text-gray-900">{title}</h1>
+            <p className="mt-3 text-[15px] leading-relaxed text-gray-600">
               {message}
             </p>
+          </div>
 
-            <div className="mt-8 flex w-full flex-col gap-3">
+          <div className="mt-8 flex w-full flex-col gap-3">
+            {canRetry ? (
               <Button
                 type="button"
-                onClick={() => navigate(backPath)}
+                disabled={retryLoading}
+                onClick={handleRetryPayment}
                 className="!w-full"
               >
-                {buttonLabel}
+                {retryLoading ? "Gerando link…" : "Tentar pagamento novamente"}
               </Button>
+            ) : null}
 
-              {status === "failure" ? (
-                <a
-                  href={supportWhatsAppUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-[44px] w-full items-center justify-center rounded-md border border-gray-200 bg-white px-6 py-3 text-base font-medium text-gray-700 transition hover:border-primary/40 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  Falar com suporte
-                </a>
-              ) : null}
-            </div>
+            {retryError ? (
+              <p className="text-center text-sm text-red-600" role="alert">
+                {retryError}
+              </p>
+            ) : null}
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="!w-full !border-gray-200 !text-gray-700"
+              onClick={() => navigate(backPath)}
+            >
+              {buttonLabel}
+            </Button>
+
+            {status === "failure" ? (
+              <a
+                href={supportWhatsAppUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-center text-sm font-medium text-primary hover:underline"
+              >
+                Preciso de ajuda
+              </a>
+            ) : null}
           </div>
         </div>
       </Container>

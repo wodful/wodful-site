@@ -1,7 +1,6 @@
 import { navigate } from "gatsby";
 import * as React from "react";
 import { useEffect, useState } from "react";
-import Modal from "react-modal";
 import { Controller, useForm } from "react-hook-form";
 import { SUBSCRIPTION_MAX_WIDTH_CLASS } from "../../constants/eventBanner";
 import ArrowRight from "../../images/arrow-right.svg";
@@ -19,12 +18,16 @@ import type { ValidateCouponResponse } from "../../services/payments";
 import { SubscriptionService } from "../../services/subscription";
 import { isValidDocument, regexOnlyNumber } from "../../utils";
 import { formatPriceBRL } from "../../utils/formatPrice";
-import { Feedback } from "../Feedback";
 import { Combobox } from "../ui/Combobox";
 import { Container } from "../ui/Container";
 import { fieldInputClass, FormField } from "../ui/FormField";
+import {
+  SubscriptionProgress,
+  type SubscriptionStepId,
+} from "./SubscriptionProgress";
 import { SubscriptionSkeleton } from "./SubscriptionSkeleton";
 import { SubscriptionSummary } from "./SubscriptionSummary";
+import { SubscriptionTermsStep } from "./SubscriptionTermsStep";
 
 function normalizeAffiliation(value: string) {
   return value.trim().replace(/\s+/g, " ");
@@ -48,12 +51,7 @@ type IGetParticipantsRequest = {
   index?: number;
 } & ISubscriptionData;
 
-interface ModalType {
-  isOpen: boolean;
-  type?: "success" | "error";
-  message?: string;
-  link?: string | null;
-}
+const subscriptionService = new SubscriptionService();
 
 const Validation = {
   invalidEmpty: "Campo obrigatório",
@@ -71,6 +69,13 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
   const [tshirtConfigs, setTshirtConfigs] = useState<TshirtSizeResponse>(
     {} as TshirtSizeResponse
   );
+  const [step, setStep] = useState<SubscriptionStepId>("terms");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [pendingSubmission, setPendingSubmission] = useState<
+    (IParticipantForm & { couponCode?: string; ticketId: string }) | null
+  >(null);
 
   const {
     register,
@@ -85,11 +90,6 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
   });
 
   const [fake_field, setFakeField] = React.useState("");
-
-  const [modalState, setModalState] = React.useState<ModalType>({
-    isOpen: false,
-    type: "success",
-  } as ModalType);
 
   const canSubmit = !fake_field && isValid;
 
@@ -237,31 +237,35 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
     return `-${formatPriceBRL(discounted.discountAmount)}`;
   }, [discounted]);
 
-  const PostSubscription = React.useCallback(
-    async (subscription: IParticipantForm) => {
+  const submitCheckout = React.useCallback(
+    async (subscription: IParticipantForm & { couponCode?: string; ticketId: string }) => {
+      setCheckoutLoading(true);
+      setCheckoutError(null);
       try {
-        const response = await new SubscriptionService().postSubscription(subscription);
-        const subscriptionId = response.data?.id;
+        const result = await subscriptionService.checkout(subscription);
 
-        let paymentLink: string | null = null;
-
-        if (subscriptionId) {
-          const { PaymentsService } = await import("../../services/payments");
-          const paymentsService = new PaymentsService();
-          const anySub = subscription as any;
-          const paymentResponse = await paymentsService.createPayment({
-            subscriptionId,
-            couponCode: anySub.couponCode,
-          });
-          paymentLink = paymentResponse.paymentUrl;
+        if (result.status === "confirmed") {
+          navigate(
+            `/subscription-success?status=success&accessCode=${accessCode}&subscriptionId=${result.subscriptionId}`
+          );
+          return;
         }
 
-        setModalState({ isOpen: true, type: "success", message: undefined, link: paymentLink ?? ticket?.paymentLink ?? null });
+        sessionStorage.setItem(
+          `@Wodful:checkout:${result.subscriptionId}`,
+          subscription.responsibleEmail
+        );
+
+        window.location.href = result.paymentUrl;
       } catch {
-        setModalState({ isOpen: true, type: "error" });
+        setCheckoutError(
+          "Não foi possível iniciar o pagamento. Revise os dados e tente novamente."
+        );
+      } finally {
+        setCheckoutLoading(false);
       }
     },
-    [ticket]
+    [accessCode]
   );
 
   const onSubmit = (subscription: IParticipantForm) => {
@@ -276,7 +280,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
       return;
     }
 
-    const subs: any = {
+    const subs: IParticipantForm & { couponCode?: string; ticketId: string } = {
       ...subscription,
       participants: subscription.participants.map((participant) => ({
         ...participant,
@@ -290,10 +294,17 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
             ? participant.tShirtSize
             : "Sem camiseta",
       })),
+      ticketId: ticket!.id,
+      couponCode: couponCode?.trim() || undefined,
     };
 
-    subs.ticketId = ticket!.id;
-    PostSubscription(subs);
+    setPendingSubmission(subs);
+    setStep("review");
+  };
+
+  const handleConfirmCheckout = () => {
+    if (!pendingSubmission) return;
+    submitCheckout(pendingSubmission);
   };
 
   const formatPhone = (phoneNumber: string) => {
@@ -323,6 +334,18 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
       {!isLoading ? (
         <div className="min-h-screen bg-slate-50 text-gray-900">
           <Container className={`py-6 sm:py-10 ${SUBSCRIPTION_MAX_WIDTH_CLASS}`}>
+            <SubscriptionProgress current={step} />
+
+            {step === "terms" ? (
+              <SubscriptionTermsStep
+                accepted={termsAccepted}
+                onAcceptedChange={setTermsAccepted}
+                onContinue={() => setStep("form")}
+                onBack={() => navigate(`/event/${accessCode}/`)}
+              />
+            ) : null}
+
+            {step === "form" ? (
             <form onSubmit={handleSubmit(onSubmit)}>
               <input
                 type="hidden"
@@ -768,35 +791,105 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                       discountBadgeText={discountBadgeText}
                       ticketPriceNumber={ticketPriceNumber}
                       canSubmit={canSubmit}
+                      submitLabel="Revisar inscrição"
+                      helperText="Na próxima etapa você confere os dados antes do pagamento."
                     />
                   </div>
                 </div>
               ) : null}
-            </form>
-          </Container>
 
-          <Modal
-            isOpen={modalState.isOpen}
-            onRequestClose={() => {
-              setModalState({ isOpen: false });
-              if (modalState.type === "success") navigate("/#");
-            }}
-            className="relative mx-auto w-full max-w-md outline-none"
-            overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
-            ariaHideApp={false}
-          >
-            <Feedback
-              type={modalState.type}
-              link={
-                modalState.type === "success"
-                  ? (modalState as ModalType).link ??
-                    ticket?.paymentLink ??
-                    null
-                  : null
-              }
-              closeModal={() => setModalState({ isOpen: false })}
-            />
-          </Modal>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => setStep("terms")}
+                  className="text-sm font-medium text-gray-600 hover:text-primary"
+                >
+                  ← Voltar aos termos
+                </button>
+              </div>
+            </form>
+            ) : null}
+
+            {step === "review" && ticket && pendingSubmission ? (
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <section className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm sm:p-8">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Revise antes de pagar
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Confira os dados abaixo. A inscrição só será confirmada após
+                    a aprovação do pagamento no Mercado Pago.
+                  </p>
+
+                  <dl className="mt-6 space-y-4 text-sm">
+                    <div>
+                      <dt className="text-gray-500">Responsável</dt>
+                      <dd className="font-medium text-gray-900">
+                        {pendingSubmission.responsibleName}
+                      </dd>
+                      <dd className="text-gray-700">
+                        {pendingSubmission.responsibleEmail} ·{" "}
+                        {pendingSubmission.responsiblePhone}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500">Time / apelido</dt>
+                      <dd className="font-medium text-gray-900">
+                        {pendingSubmission.nickname}
+                      </dd>
+                    </div>
+                    {pendingSubmission.participants.map((participant, index) => (
+                      <div key={`review-${index}`}>
+                        <dt className="text-gray-500">Atleta {index + 1}</dt>
+                        <dd className="font-medium text-gray-900">
+                          {participant.name}
+                        </dd>
+                        <dd className="text-gray-700">
+                          {participant.affiliation} · {participant.city}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  {checkoutError ? (
+                    <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                      {checkoutError}
+                    </p>
+                  ) : null}
+
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setStep("form")}
+                      className="text-sm font-medium text-gray-600 hover:text-primary"
+                    >
+                      ← Editar dados
+                    </button>
+                  </div>
+                </section>
+
+                <SubscriptionSummary
+                  ticket={ticket}
+                  discounted={discounted}
+                  discountBadgeText={discountBadgeText}
+                  ticketPriceNumber={ticketPriceNumber}
+                  canSubmit={!checkoutLoading}
+                  submitLabel={
+                    discounted && discounted.final <= 0
+                      ? "Confirmar inscrição gratuita"
+                      : "Ir para pagamento"
+                  }
+                  helperText={
+                    discounted && discounted.final <= 0
+                      ? "Cupom aplicado — confirmação imediata."
+                      : "Você será redirecionado ao Mercado Pago. PIX e cartão podem ficar pendentes até a confirmação."
+                  }
+                  loading={checkoutLoading}
+                  onContinue={handleConfirmCheckout}
+                />
+              </div>
+            ) : null}
+          </Container>
         </div>
       ) : (
         <SubscriptionSkeleton />

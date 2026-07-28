@@ -43,12 +43,14 @@ export class PaymentsService {
     status: "approved" | "pending" | "rejected";
     paymentId: string;
     subscriptionId: string;
+    providerPaymentId?: string;
   }> {
     try {
       const response = await wodfulApi.post<{
         status: "approved" | "pending" | "rejected";
         paymentId: string;
         subscriptionId: string;
+        providerPaymentId?: string;
       }>("/payments/brick", payload);
       return response.data;
     } catch (err: any) {

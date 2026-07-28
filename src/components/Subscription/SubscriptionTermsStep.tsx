@@ -74,9 +74,11 @@ export function SubscriptionTermsStep({
           aria-invalid={showError || undefined}
           aria-describedby={showError ? "terms-accept-error" : undefined}
           className={[
-            "mt-1 size-4 rounded text-primary focus:ring-primary",
-            showError ? "border-red-500" : "border-gray-300",
-          ].join(" ")}
+            "mt-1 h-4 w-4 shrink-0 accent-primary",
+            showError ? "outline outline-2 outline-offset-1 outline-red-500" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         />
         <span className="text-sm leading-relaxed text-gray-800">
           Li e aceito a Política de Privacidade e autorizo o tratamento dos meus

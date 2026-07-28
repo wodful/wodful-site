@@ -113,6 +113,8 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
   const {
     register,
     setValue,
+    getValues,
+    trigger,
     handleSubmit,
     setError,
     watch,
@@ -378,8 +380,39 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
 
   const formatDocument = (document: string, index: number) => {
     document = regexOnlyNumber(document);
-    setValue(`participants.${index}.identificationCode`, document);
+    setValue(`participants.${index}.identificationCode`, document, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
+
+  const isDocumentUniqueAmongAthletes = React.useCallback(
+    (value: string, currentIndex: number) => {
+      const digits = regexOnlyNumber(value || "");
+      if (digits.length < 11) return true;
+
+      const participants = getValues("participants") ?? [];
+      const duplicated = participants.some(
+        (participant, index) =>
+          index !== currentIndex &&
+          regexOnlyNumber(participant?.identificationCode ?? "") === digits
+      );
+
+      return duplicated
+        ? "Este CPF já foi informado em outro atleta"
+        : true;
+    },
+    [getValues]
+  );
+
+  const revalidateAthleteDocuments = React.useCallback(() => {
+    void trigger(
+      indexes.map(
+        (i) =>
+          `participants.${i}.identificationCode` as `participants.${number}.identificationCode`
+      )
+    );
+  }, [indexes, trigger]);
 
   useEffect(() => {
     if (!accessCode) return;
@@ -744,7 +777,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                           <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-xl border border-gray-200/80 bg-white px-4 py-3 text-sm text-gray-700">
                             <input
                               type="checkbox"
-                              className="mt-0.5 size-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
                               checked={copyResponsibleToFirst}
                               onChange={(event) =>
                                 setCopyResponsibleToFirst(event.target.checked)
@@ -867,27 +900,38 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                                             `participants.${index}.identificationCode`,
                                             {
                                               required: Validation.invalidEmpty,
-                                              onBlur: (ev) =>
+                                              onBlur: (ev) => {
                                                 getParticipant({
                                                   accessCode:
                                                     event?.accessCode!,
                                                   search: ev.target.value,
                                                   type: "code",
                                                   index,
-                                                }),
+                                                });
+                                                revalidateAthleteDocuments();
+                                              },
                                               minLength: {
                                                 value: 11,
-                                                message: "Informe os 11 dígitos do CPF",
+                                                message:
+                                                  "Informe os 11 dígitos do CPF",
                                               },
                                               onChange(event) {
                                                 formatDocument(
                                                   event.target.value,
                                                   index
                                                 );
+                                                revalidateAthleteDocuments();
                                               },
-                                              validate: (value) =>
-                                                isValidDocument(value) ||
-                                                Validation.invalid,
+                                              validate: {
+                                                validDocument: (value) =>
+                                                  isValidDocument(value) ||
+                                                  Validation.invalid,
+                                                uniqueInTeam: (value) =>
+                                                  isDocumentUniqueAmongAthletes(
+                                                    value,
+                                                    index
+                                                  ),
+                                              },
                                             }
                                           )}
                                         />

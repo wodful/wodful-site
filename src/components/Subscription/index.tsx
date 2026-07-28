@@ -744,7 +744,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                           <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-xl border border-gray-200/80 bg-white px-4 py-3 text-sm text-gray-700">
                             <input
                               type="checkbox"
-                              className="mt-0.5 size-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
                               checked={copyResponsibleToFirst}
                               onChange={(event) =>
                                 setCopyResponsibleToFirst(event.target.checked)

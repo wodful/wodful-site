@@ -57,11 +57,33 @@
     @apply box-border h-10 rounded-md border border-gray-200 bg-white px-4 py-2 text-base text-gray-800;
   }
 
-  /* Radios/checkboxes do Payment Brick (e nativos) não devem herdar altura/padding de input de texto */
+  /* Checkboxes/radios já estão fora do estilo de input de texto acima.
+     No Safari, border-0 + bg-transparent deixa o checkbox invisível. */
   input[type="radio"],
   input[type="checkbox"] {
-    @apply h-auto w-auto max-w-none appearance-auto rounded-none border-0 bg-transparent p-0;
+    -webkit-appearance: auto;
+    appearance: auto;
+    width: 1rem;
+    height: 1rem;
+    min-width: 1rem;
+    min-height: 1rem;
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
     accent-color: #319795;
+    vertical-align: middle;
+  }
+
+  input[type="checkbox"] {
+    -webkit-appearance: checkbox;
+    appearance: checkbox;
+    border-radius: 0.25rem;
+  }
+
+  input[type="radio"] {
+    -webkit-appearance: radio;
+    appearance: radio;
+    border-radius: 9999px;
   }
 
   textarea {

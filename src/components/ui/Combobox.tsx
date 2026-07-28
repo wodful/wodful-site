@@ -11,6 +11,9 @@ type ComboboxProps = {
   invalid?: boolean;
   disabled?: boolean;
   resolveCanonical?: (value: string, options: string[]) => string;
+  "aria-invalid"?: boolean | "true" | "false";
+  "aria-describedby"?: string;
+  "aria-required"?: boolean | "true" | "false";
 };
 
 function defaultResolveCanonical(value: string, options: string[]) {
@@ -32,6 +35,9 @@ export function Combobox({
   invalid,
   disabled,
   resolveCanonical = defaultResolveCanonical,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
+  "aria-required": ariaRequired,
 }: ComboboxProps) {
   const listId = React.useId();
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -119,11 +125,14 @@ export function Combobox({
         aria-expanded={open}
         aria-controls={listId}
         aria-autocomplete="list"
+        aria-invalid={ariaInvalid ?? (invalid || undefined)}
+        aria-describedby={ariaDescribedBy}
+        aria-required={ariaRequired}
         autoComplete="off"
         disabled={disabled}
         placeholder={placeholder}
         value={value}
-        className={fieldInputClass(invalid)}
+        className={fieldInputClass(invalid || ariaInvalid === true || ariaInvalid === "true")}
         onChange={(event) => {
           onChange(event.target.value);
           setOpen(true);

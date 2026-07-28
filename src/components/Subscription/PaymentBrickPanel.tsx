@@ -1,5 +1,5 @@
 import * as React from "react";
-import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
+import { initMercadoPago, Payment, StatusScreen } from "@mercadopago/sdk-react";
 import { PaymentsService } from "../../services/payments";
 import { CheckoutHoldTimer } from "./CheckoutHoldTimer";
 
@@ -34,6 +34,8 @@ export function PaymentBrickPanel({
   const [ready, setReady] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [holdExpired, setHoldExpired] = React.useState(false);
+  /** Mercado Pago payment id — when set, show Status Screen (PIX QR / aguardando) */
+  const [mpPaymentId, setMpPaymentId] = React.useState<string | null>(null);
   const initializedKey = React.useRef<string | null>(null);
 
   const handleHoldExpired = React.useCallback(() => {
@@ -43,6 +45,7 @@ export function PaymentBrickPanel({
 
   React.useEffect(() => {
     setHoldExpired(false);
+    setMpPaymentId(null);
   }, [session.paymentId, session.expiresAt]);
 
   React.useEffect(() => {
@@ -58,7 +61,6 @@ export function PaymentBrickPanel({
   const customization = React.useMemo(
     () => ({
       paymentMethods: {
-        // Cartão + PIX only (PIX = bankTransfer no Brick BR)
         creditCard: "all" as const,
         debitCard: "all" as const,
         bankTransfer: "all" as const,
@@ -68,8 +70,6 @@ export function PaymentBrickPanel({
     []
   );
 
-  // Sem preferenceId: evita "Failed to get preference details".
-  // Preference só é necessária para Wallet (conta Mercado Pago).
   const initialization = React.useMemo(
     () => ({
       amount: session.amountFinal,
@@ -79,6 +79,13 @@ export function PaymentBrickPanel({
     }),
     [session.amountFinal, session.payerEmail]
   );
+
+  const successUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/subscription-success?status=success&accessCode=${encodeURIComponent(
+          session.accessCode
+        )}&subscriptionId=${encodeURIComponent(session.subscriptionId)}`
+      : undefined;
 
   if (!session.publicKey) {
     return (
@@ -90,10 +97,13 @@ export function PaymentBrickPanel({
 
   return (
     <div className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5">
-      <h3 className="text-base font-semibold text-gray-900">Pagamento</h3>
+      <h3 className="text-base font-semibold text-gray-900">
+        {mpPaymentId ? "Conclua o pagamento" : "Pagamento"}
+      </h3>
       <p className="mt-1 text-sm text-gray-600">
-        Pague com cartão ou PIX sem sair desta página. A inscrição só é
-        confirmada após a aprovação.
+        {mpPaymentId
+          ? "Escaneie o QR Code ou copie o código Pix. A inscrição só é confirmada após a aprovação."
+          : "Pague com cartão ou PIX sem sair desta página. A inscrição só é confirmada após a aprovação."}
       </p>
 
       <div className="mt-4">
@@ -110,7 +120,7 @@ export function PaymentBrickPanel({
         </p>
       ) : null}
 
-      {!ready && !holdExpired ? (
+      {!ready && !holdExpired && !mpPaymentId ? (
         <p className="mt-4 text-sm text-gray-500" role="status">
           Carregando formas de pagamento…
         </p>
@@ -122,48 +132,90 @@ export function PaymentBrickPanel({
         </p>
       ) : null}
 
-      {!holdExpired ? (
-      <div className="mp-payment-brick mt-4">
-        <Payment
-          initialization={initialization}
-          customization={customization}
-          onReady={() => {
-            setReady(true);
-            setError(null);
-          }}
-          onError={(err) => {
-            const message = err?.message ?? "Erro ao carregar o pagamento";
-            setError(message);
-            onRejected(message);
-          }}
-          onSubmit={async ({ formData }) => {
-            setError(null);
-            try {
-              const result = await paymentsService.processBrickPayment({
-                paymentId: session.paymentId,
-                formData: formData as unknown as Record<string, unknown>,
-              });
+      {!holdExpired && mpPaymentId ? (
+        <div className="mp-payment-brick mt-4">
+          <StatusScreen
+            initialization={{ paymentId: mpPaymentId }}
+            customization={{
+              ...(successUrl
+                ? {
+                    backUrls: {
+                      return: successUrl,
+                    },
+                  }
+                : {}),
+              visual: {
+                hideStatusDetails: false,
+                hideTransactionDate: true,
+              },
+            }}
+            onReady={() => setReady(true)}
+            onError={(err) => {
+              setError(err?.message ?? "Erro ao exibir status do pagamento");
+            }}
+          />
+          <p className="mt-3 text-center text-xs text-gray-500">
+            Após pagar o Pix, a confirmação pode levar alguns segundos. Não feche
+            esta página.
+          </p>
+        </div>
+      ) : null}
 
-              if (result.status === "approved") {
-                onApproved(result.subscriptionId);
-                return;
-              }
-              if (result.status === "pending") {
-                onPending(result.subscriptionId);
-                return;
-              }
-              onRejected("Pagamento não aprovado. Tente outra forma de pagamento.");
-            } catch (err) {
-              const message =
-                err instanceof Error
-                  ? err.message
-                  : "Não foi possível processar o pagamento";
+      {!holdExpired && !mpPaymentId ? (
+        <div className="mp-payment-brick mt-4">
+          <Payment
+            initialization={initialization}
+            customization={customization}
+            onReady={() => {
+              setReady(true);
+              setError(null);
+            }}
+            onError={(err) => {
+              const message = err?.message ?? "Erro ao carregar o pagamento";
               setError(message);
-              throw err;
-            }
-          }}
-        />
-      </div>
+              onRejected(message);
+            }}
+            onSubmit={async ({ formData }) => {
+              setError(null);
+              try {
+                const result = await paymentsService.processBrickPayment({
+                  paymentId: session.paymentId,
+                  formData: formData as unknown as Record<string, unknown>,
+                });
+
+                if (result.status === "approved") {
+                  onApproved(result.subscriptionId);
+                  return result.providerPaymentId
+                    ? { id: result.providerPaymentId }
+                    : undefined;
+                }
+
+                if (result.status === "pending") {
+                  if (!result.providerPaymentId) {
+                    // Fallback: sem id do MP, mantém fluxo antigo
+                    onPending(result.subscriptionId);
+                    return;
+                  }
+                  // Fica na página e mostra QR / copia-e-cola via Status Screen
+                  setMpPaymentId(result.providerPaymentId);
+                  return { id: result.providerPaymentId };
+                }
+
+                onRejected(
+                  "Pagamento não aprovado. Tente outra forma de pagamento."
+                );
+                throw new Error("Pagamento rejeitado");
+              } catch (err) {
+                const message =
+                  err instanceof Error
+                    ? err.message
+                    : "Não foi possível processar o pagamento";
+                setError(message);
+                throw err;
+              }
+            }}
+          />
+        </div>
       ) : null}
     </div>
   );

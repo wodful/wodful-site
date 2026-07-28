@@ -15,16 +15,21 @@ export function useAccessCodeFromPath(
   segment: "event" | "subscription",
   accessCodeFromRouter?: string
 ): string {
-  const [accessCode, setAccessCode] = React.useState(
-    () => accessCodeFromRouter ?? readAccessCodeFromUrl(segment)
-  );
+  const [accessCode, setAccessCode] = React.useState(() => {
+    if (accessCodeFromRouter) return accessCodeFromRouter;
+    return readAccessCodeFromUrl(segment);
+  });
 
   React.useEffect(() => {
-    const fromUrl = readAccessCodeFromUrl(segment);
-    if (fromUrl) {
-      setAccessCode(fromUrl);
-    }
-  }, [segment]);
+    const sync = () => {
+      const fromUrl = readAccessCodeFromUrl(segment);
+      if (fromUrl) setAccessCode(fromUrl);
+    };
+
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, [segment, accessCodeFromRouter]);
 
   return accessCodeFromRouter || accessCode;
 }

@@ -118,7 +118,10 @@ export function Combobox({
   };
 
   return (
-    <div ref={rootRef} className="relative z-30 min-w-0">
+    <div
+      ref={rootRef}
+      className={["relative min-w-0", open ? "z-40" : "z-0"].join(" ")}
+    >
       <input
         id={id}
         type="text"
@@ -159,7 +162,7 @@ export function Combobox({
         <ul
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 right-0 top-full z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
         >
           {filtered.map((option, index) => {
             const active = index === highlight;

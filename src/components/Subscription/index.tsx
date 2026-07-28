@@ -382,9 +382,15 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
   };
 
   useEffect(() => {
+    if (!accessCode) return;
+
     const ticketStorage = localStorage.getItem("@Wodful:ticket");
-    if (!ticketStorage) navigate(`/event/${accessCode}/`);
-    getEvent(accessCode, ticketStorage!.replaceAll('"', ""));
+    if (!ticketStorage) {
+      navigate(`/event/${accessCode}/`);
+      return;
+    }
+
+    getEvent(accessCode, ticketStorage.replaceAll('"', ""));
     getEventTshirt(accessCode);
     getEventAffiliations(accessCode);
   }, [accessCode, getEvent, getEventTshirt, getEventAffiliations]);
@@ -516,8 +522,9 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
 
             {step === "form" ? (
               <form
+                id="subscription-form"
                 onSubmit={handleSubmit(onSubmit, onInvalid)}
-                className="pb-28 lg:pb-0"
+                className="pb-32 lg:pb-0"
               >
                 <input
                   type="hidden"

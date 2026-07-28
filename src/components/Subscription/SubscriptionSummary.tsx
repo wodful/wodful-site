@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Ticket } from "../../models/EventResponse";
 import { formatPriceBRL } from "../../utils/formatPrice";
 import { Button } from "../ui/Button";
@@ -44,12 +45,18 @@ export const SubscriptionSummary = ({
 }: SubscriptionSummaryProps) => {
   const isFree = discounted ? discounted.final <= 0 : ticketPriceNumber <= 0;
   const displayPrice = discounted ? discounted.final : ticketPriceNumber;
+  const [stickyReady, setStickyReady] = React.useState(false);
+
+  React.useEffect(() => {
+    setStickyReady(true);
+  }, []);
 
   const submitButton = showSubmit ? (
     <Button
       type={onContinue ? "button" : "submit"}
       disabled={!canSubmit || loading}
       className="!w-full"
+      fullWidth
       onClick={onContinue}
     >
       {loading ? "Processando…" : submitLabel}
@@ -67,6 +74,38 @@ export const SubscriptionSummary = ({
         : "A inscrição só é confirmada após a aprovação do pagamento."}
     </p>
   );
+
+  const stickyBar =
+    stickyReady && stickyMobileCta && showSubmit
+      ? createPortal(
+          <div
+            className="fixed inset-x-0 bottom-0 z-[100] border-t border-gray-200 bg-white p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] lg:hidden"
+            style={{
+              paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+            }}
+          >
+            <div className="mx-auto flex max-w-lg items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs text-gray-500">{ticket.name}</p>
+                <p className="text-base font-bold tabular-nums text-gray-900">
+                  {formatPriceBRL(displayPrice)}
+                </p>
+              </div>
+              <Button
+                type={onContinue ? "button" : "submit"}
+                form="subscription-form"
+                disabled={!canSubmit || loading}
+                fullWidth={false}
+                className="!px-4"
+                onClick={onContinue}
+              >
+                {loading ? "…" : submitLabel}
+              </Button>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
 
   return (
     <>
@@ -123,7 +162,7 @@ export const SubscriptionSummary = ({
 
           {showSubmit ? (
             <div
-              className={`mt-5 space-y-3 ${stickyMobileCta ? "hidden lg:block" : ""}`}
+              className={`mt-5 space-y-3 ${stickyMobileCta ? "max-lg:hidden" : ""}`}
             >
               {submitButton}
               {helper}
@@ -134,29 +173,7 @@ export const SubscriptionSummary = ({
         </div>
       </aside>
 
-      {stickyMobileCta && showSubmit ? (
-        <div
-          className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden"
-          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-        >
-          <div className="mx-auto flex max-w-lg items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs text-gray-500">{ticket.name}</p>
-              <p className="text-base font-bold tabular-nums text-gray-900">
-                {formatPriceBRL(displayPrice)}
-              </p>
-            </div>
-            <Button
-              type={onContinue ? "button" : "submit"}
-              disabled={!canSubmit || loading}
-              className="!w-auto shrink-0 !px-4"
-              onClick={onContinue}
-            >
-              {loading ? "…" : submitLabel}
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      {stickyBar}
     </>
   );
 };

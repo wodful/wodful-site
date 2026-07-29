@@ -7,6 +7,7 @@ import { EventResponse } from "../../models/EventResponse";
 import { EventService } from "../../services/events";
 import { Container } from "../ui/Container";
 import { EVENT_BANNER_MAX_WIDTH_CLASS } from "../../constants/eventBanner";
+import { formatEventDateRange } from "../../utils/formatEventDateRange";
 import { EventBanner, EventBannerPlaceholder } from "./EventBanner";
 import { EventSkeleton } from "./EventSkeleton";
 import { SubscriptionChoice } from "./SubscriptionChoice";
@@ -100,7 +101,7 @@ export const EventData = ({ accessCode }: IEventData) => {
                 <span>
                   <span className="font-medium text-gray-800">Data</span>
                   <br />
-                  {event.startDate} até {event.endDate}
+                  {formatEventDateRange(event.startDate, event.endDate)}
                 </span>
               </li>
               {event.address ? (

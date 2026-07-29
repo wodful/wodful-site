@@ -17,6 +17,7 @@ import { ParticipantsService } from "../../services/participants";
 import type { ValidateCouponResponse } from "../../services/payments";
 import { SubscriptionService } from "../../services/subscription";
 import { isValidDocument, regexOnlyNumber } from "../../utils";
+import { formatEventDateRange } from "../../utils/formatEventDateRange";
 import { formatPriceBRL } from "../../utils/formatPrice";
 import { Combobox } from "../ui/Combobox";
 import { Container } from "../ui/Container";
@@ -593,7 +594,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                         aria-hidden
                       />
                       <span>
-                        {event?.startDate} até {event?.endDate}
+                        {formatEventDateRange(event?.startDate, event?.endDate)}
                       </span>
                     </li>
                     {event?.address ? (

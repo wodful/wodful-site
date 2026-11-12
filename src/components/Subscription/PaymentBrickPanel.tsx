@@ -80,12 +80,51 @@ export function PaymentBrickPanel({
     [session.amountFinal, session.payerEmail]
   );
 
-  const successUrl =
+  const returnUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/subscription-success?status=success&accessCode=${encodeURIComponent(
+      ? `${window.location.origin}/subscription-success?status=pending&accessCode=${encodeURIComponent(
           session.accessCode
-        )}&subscriptionId=${encodeURIComponent(session.subscriptionId)}`
+        )}&subscriptionId=${encodeURIComponent(
+          session.subscriptionId
+        )}&email=${encodeURIComponent(session.payerEmail)}`
       : undefined;
+
+  const onApprovedRef = React.useRef(onApproved);
+  const onRejectedRef = React.useRef(onRejected);
+  onApprovedRef.current = onApproved;
+  onRejectedRef.current = onRejected;
+
+  React.useEffect(() => {
+    if (!mpPaymentId || holdExpired) return;
+
+    let stopped = false;
+    const poll = async () => {
+      if (stopped) return;
+      try {
+        const result = await paymentsService.getPaymentStatus(session.paymentId);
+        if (stopped) return;
+        if (result.status === "approved") {
+          stopped = true;
+          onApprovedRef.current(session.subscriptionId);
+          return;
+        }
+        if (result.status === "rejected") {
+          stopped = true;
+          onRejectedRef.current(
+            "Pagamento não aprovado. Tente outra forma de pagamento."
+          );
+        }
+      } catch {
+        // A failed check keeps the QR on screen until the next attempt.
+      }
+    };
+
+    const timer = window.setInterval(poll, 5000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [mpPaymentId, holdExpired, session.paymentId, session.subscriptionId]);
 
   if (!session.publicKey) {
     return (
@@ -137,10 +176,10 @@ export function PaymentBrickPanel({
           <StatusScreen
             initialization={{ paymentId: mpPaymentId }}
             customization={{
-              ...(successUrl
+              ...(returnUrl
                 ? {
                     backUrls: {
-                      return: successUrl,
+                      return: returnUrl,
                     },
                   }
                 : {}),

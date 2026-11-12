@@ -66,6 +66,15 @@ export class PaymentsService {
     }
   }
 
+  async getPaymentStatus(paymentId: string): Promise<{
+    status: "approved" | "pending" | "rejected";
+  }> {
+    const response = await wodfulApi.get<{
+      status: "approved" | "pending" | "rejected";
+    }>(`/payments/${paymentId}/status`);
+    return response.data;
+  }
+
   async validateCoupon(payload: {
     ticketId: string;
     couponCode: string;

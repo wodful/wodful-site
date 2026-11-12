@@ -215,8 +215,8 @@ export const SubscriptionSummary = ({
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed text-gray-600">
-                    O organizador deste evento optou por repassar a taxa de
-                    serviço da plataforma ao atleta.
+                    A taxa de serviço da plataforma é somada ao valor da
+                    inscrição.
                   </p>
                 </>
               ) : (

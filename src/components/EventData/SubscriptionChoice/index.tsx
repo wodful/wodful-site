@@ -29,49 +29,49 @@ type TicketRowProps = {
 
 function TicketRow({ ticket, onSelect }: TicketRowProps) {
   const badge = categoryBadge(ticket);
+  const showFee =
+    Boolean(ticket.passFeeToAthlete) && Number(ticket.athleteFeeAmount) > 0;
 
   return (
     <li>
       <button
         type="button"
         onClick={() => onSelect(ticket)}
-        className="group flex w-full min-h-[4.5rem] items-center gap-4 rounded-xl border border-gray-200/80 bg-white px-4 py-4 text-left shadow-sm transition hover:border-primary/40 hover:bg-primary/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99]"
+        className="group flex w-full min-h-[4.5rem] flex-col rounded-xl border border-gray-200/80 bg-white px-4 py-4 text-left shadow-sm transition hover:border-primary/40 hover:bg-primary/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99]"
       >
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold leading-snug text-gray-900">
-            {ticket.name}
+        <span className="flex w-full items-center gap-4">
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold leading-snug text-gray-900">
+              {ticket.name}
+            </span>
+            {ticket.description ? (
+              <span className="mt-1 block text-sm leading-relaxed text-gray-500">
+                {ticket.description}
+              </span>
+            ) : null}
+            {badge ? (
+              <span className="mt-2 inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-gray-600">
+                {badge}
+              </span>
+            ) : null}
           </span>
-          {ticket.description ? (
-            <span className="mt-1 block text-sm leading-relaxed text-gray-500">
-              {ticket.description}
-            </span>
-          ) : null}
-          {badge ? (
-            <span className="mt-2 inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-gray-600">
-              {badge}
-            </span>
-          ) : null}
-        </span>
-        <span className="flex shrink-0 flex-col items-end gap-0.5">
-          {ticket.passFeeToAthlete && Number(ticket.athleteFeeAmount) > 0 ? (
-            <>
-              <span className="text-lg font-bold tabular-nums text-gray-900">
-                {formatPriceBRL(ticket.athleteTotal ?? ticket.price)}
-              </span>
-              <span className="text-xs tabular-nums text-gray-500">
-                {formatPriceBRL(ticket.inscriptionAmount ?? ticket.price)} +{" "}
-                {formatPriceBRL(ticket.athleteFeeAmount ?? 0)} taxa
-              </span>
-            </>
-          ) : (
+          <span className="flex shrink-0 flex-col items-end gap-0.5">
             <span className="text-lg font-bold tabular-nums text-gray-900">
-              {formatPriceBRL(ticket.price)}
+              {formatPriceBRL(
+                showFee ? (ticket.athleteTotal ?? ticket.price) : ticket.price
+              )}
             </span>
-          )}
-          <span className="text-xs font-medium text-primary opacity-80 transition group-hover:opacity-100">
-            Selecionar →
+            <span className="text-xs font-medium text-primary opacity-80 transition group-hover:opacity-100">
+              Selecionar →
+            </span>
           </span>
         </span>
+        {showFee ? (
+          <span className="mt-2 block w-full text-right text-xs tabular-nums leading-snug text-gray-500">
+            {formatPriceBRL(ticket.inscriptionAmount ?? ticket.price)} +{" "}
+            {formatPriceBRL(ticket.athleteFeeAmount ?? 0)} taxa
+          </span>
+        ) : null}
       </button>
     </li>
   );

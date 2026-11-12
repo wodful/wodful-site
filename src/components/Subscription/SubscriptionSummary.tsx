@@ -10,6 +10,10 @@ type DiscountInfo = {
   discountAmount: number;
   type: string;
   value: number;
+  inscriptionAmount: number;
+  athleteFeeAmount: number;
+  feePercent: number;
+  passFeeToAthlete: boolean;
 };
 
 type SubscriptionSummaryProps = {
@@ -43,8 +47,36 @@ export const SubscriptionSummary = ({
   couponSlot,
   stickyMobileCta = false,
 }: SubscriptionSummaryProps) => {
-  const isFree = discounted ? discounted.final <= 0 : ticketPriceNumber <= 0;
-  const displayPrice = discounted ? discounted.final : ticketPriceNumber;
+  const feeFromCoupon = Boolean(
+    discounted?.passFeeToAthlete && discounted.athleteFeeAmount > 0
+  );
+  const feeFromTicket =
+    !discounted &&
+    Boolean(ticket.passFeeToAthlete) &&
+    Number(ticket.athleteFeeAmount) > 0;
+  const showFee = feeFromCoupon || feeFromTicket;
+  const inscription = discounted
+    ? discounted.inscriptionAmount
+    : Number(ticket.inscriptionAmount ?? ticketPriceNumber);
+  const athleteFee = discounted
+    ? discounted.athleteFeeAmount
+    : Number(ticket.athleteFeeAmount ?? 0);
+  const feePercent = discounted
+    ? discounted.feePercent
+    : Number(ticket.feePercent ?? 0);
+  const total = discounted
+    ? discounted.final
+    : Number(ticket.athleteTotal ?? ticketPriceNumber);
+  const isFree = showFee
+    ? total <= 0
+    : discounted
+      ? discounted.final <= 0
+      : ticketPriceNumber <= 0;
+  const displayPrice = showFee
+    ? total
+    : discounted
+      ? discounted.final
+      : ticketPriceNumber;
   const [stickyReady, setStickyReady] = React.useState(false);
 
   React.useEffect(() => {
@@ -87,6 +119,12 @@ export const SubscriptionSummary = ({
             <div className="mx-auto flex max-w-lg items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs text-gray-500">{ticket.name}</p>
+                {showFee ? (
+                  <p className="truncate text-[11px] tabular-nums text-gray-500">
+                    {formatPriceBRL(inscription)} + {formatPriceBRL(athleteFee)}{" "}
+                    taxa
+                  </p>
+                ) : null}
                 <p className="text-base font-bold tabular-nums text-gray-900">
                   {formatPriceBRL(displayPrice)}
                 </p>
@@ -135,25 +173,74 @@ export const SubscriptionSummary = ({
               <p className="mt-1 text-sm text-gray-500">Valor único</p>
             )}
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {discounted ? (
+            <div className="mt-3 space-y-2">
+              {showFee ? (
                 <>
-                  <span className="text-sm font-semibold text-gray-500 line-through tabular-nums">
-                    {formatPriceBRL(discounted.original)}
-                  </span>
-                  <span className="text-xl font-bold tabular-nums text-emerald-600">
-                    {formatPriceBRL(discounted.final)}
-                  </span>
-                  {discountBadgeText ? (
-                    <span className="inline-flex h-[22px] items-center rounded-full bg-emerald-500/10 px-2 text-xs font-bold text-emerald-600">
-                      {discountBadgeText}
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="text-gray-500">Inscrição</span>
+                    <span className="font-semibold tabular-nums text-gray-900">
+                      {discounted ? (
+                        <span className="inline-flex items-center gap-2 font-semibold tabular-nums text-gray-900">
+                          <span className="font-medium text-gray-400 line-through">
+                            {formatPriceBRL(discounted.original)}
+                          </span>
+                          {formatPriceBRL(inscription)}
+                          {discountBadgeText ? (
+                            <span className="inline-flex h-[22px] items-center rounded-full bg-emerald-500/10 px-2 text-xs font-bold text-emerald-600">
+                              {discountBadgeText}
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : (
+                        formatPriceBRL(inscription)
+                      )}
                     </span>
-                  ) : null}
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="text-gray-500">
+                      Taxa de serviço (
+                      {feePercent.toLocaleString("pt-BR", {
+                        maximumFractionDigits: 2,
+                      })}
+                      %)
+                    </span>
+                    <span className="font-semibold tabular-nums text-gray-900">
+                      {formatPriceBRL(athleteFee)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3 border-t border-gray-100 pt-2">
+                    <span className="font-medium text-gray-700">Total</span>
+                    <span className="text-xl font-bold tabular-nums text-gray-900">
+                      {formatPriceBRL(total)}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-gray-600">
+                    O organizador deste evento optou por repassar a taxa de
+                    serviço da plataforma ao atleta.
+                  </p>
                 </>
               ) : (
-                <span className="text-xl font-bold tabular-nums text-gray-900">
-                  {formatPriceBRL(ticketPriceNumber)}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {discounted ? (
+                    <>
+                      <span className="text-sm font-semibold text-gray-500 line-through tabular-nums">
+                        {formatPriceBRL(discounted.original)}
+                      </span>
+                      <span className="text-xl font-bold tabular-nums text-emerald-600">
+                        {formatPriceBRL(discounted.final)}
+                      </span>
+                      {discountBadgeText ? (
+                        <span className="inline-flex h-[22px] items-center rounded-full bg-emerald-500/10 px-2 text-xs font-bold text-emerald-600">
+                          {discountBadgeText}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="text-xl font-bold tabular-nums text-gray-900">
+                      {formatPriceBRL(ticketPriceNumber)}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </article>

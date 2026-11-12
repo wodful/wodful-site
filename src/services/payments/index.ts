@@ -16,6 +16,10 @@ export type ValidateCouponResponse =
       coupon: { id: string; code: string; type: "PERCENTAGE" | "FIXED"; value: number };
       amountOriginal: number;
       discountAmount: number;
+      inscriptionAmount: number;
+      feePercent: number;
+      passFeeToAthlete: boolean;
+      athleteFeeAmount: number;
       amountFinal: number;
     }
   | {

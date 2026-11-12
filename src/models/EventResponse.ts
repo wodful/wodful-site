@@ -15,6 +15,11 @@ export interface Ticket {
   description: string;
   price: string;
   name: string;
+  inscriptionAmount?: number;
+  athleteFeeAmount?: number;
+  athleteTotal?: number;
+  feePercent?: number;
+  passFeeToAthlete?: boolean;
   category: Category;
 }
 

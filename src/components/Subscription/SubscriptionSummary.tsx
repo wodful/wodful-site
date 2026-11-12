@@ -61,9 +61,6 @@ export const SubscriptionSummary = ({
   const athleteFee = discounted
     ? discounted.athleteFeeAmount
     : Number(ticket.athleteFeeAmount ?? 0);
-  const feePercent = discounted
-    ? discounted.feePercent
-    : Number(ticket.feePercent ?? 0);
   const total = discounted
     ? discounted.final
     : Number(ticket.athleteTotal ?? ticketPriceNumber);
@@ -197,13 +194,7 @@ export const SubscriptionSummary = ({
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="text-gray-500">
-                      Taxa de serviço (
-                      {feePercent.toLocaleString("pt-BR", {
-                        maximumFractionDigits: 2,
-                      })}
-                      %)
-                    </span>
+                    <span className="text-gray-500">Taxa de serviço</span>
                     <span className="font-semibold tabular-nums text-gray-900">
                       {formatPriceBRL(athleteFee)}
                     </span>

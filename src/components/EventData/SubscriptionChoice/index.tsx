@@ -53,9 +53,21 @@ function TicketRow({ ticket, onSelect }: TicketRowProps) {
           ) : null}
         </span>
         <span className="flex shrink-0 flex-col items-end gap-0.5">
-          <span className="text-lg font-bold tabular-nums text-gray-900">
-            {formatPriceBRL(ticket.price)}
-          </span>
+          {ticket.passFeeToAthlete && Number(ticket.athleteFeeAmount) > 0 ? (
+            <>
+              <span className="text-lg font-bold tabular-nums text-gray-900">
+                {formatPriceBRL(ticket.athleteTotal ?? ticket.price)}
+              </span>
+              <span className="text-xs tabular-nums text-gray-500">
+                {formatPriceBRL(ticket.inscriptionAmount ?? ticket.price)} +{" "}
+                {formatPriceBRL(ticket.athleteFeeAmount ?? 0)} taxa
+              </span>
+            </>
+          ) : (
+            <span className="text-lg font-bold tabular-nums text-gray-900">
+              {formatPriceBRL(ticket.price)}
+            </span>
+          )}
           <span className="text-xs font-medium text-primary opacity-80 transition group-hover:opacity-100">
             Selecionar →
           </span>

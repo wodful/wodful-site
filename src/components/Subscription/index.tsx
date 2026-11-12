@@ -274,6 +274,10 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
         discountAmount: vr.discountAmount,
         type: vr.coupon.type,
         value: vr.coupon.value,
+        inscriptionAmount: vr.inscriptionAmount,
+        athleteFeeAmount: vr.athleteFeeAmount,
+        feePercent: vr.feePercent,
+        passFeeToAthlete: vr.passFeeToAthlete,
       };
     }
     return null;

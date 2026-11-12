@@ -34,11 +34,21 @@ export const Header = ({ isSimple = false }: IHeaderProps) => {
   const closeMenu = () => setHamburgerOpen(false);
 
   const logo = (
-    <img src={HeaderLogo} alt="Wodful" className="h-8 w-auto" />
+    <img
+      src={HeaderLogo}
+      alt="Wodful"
+      className={isSimple ? "h-7 w-auto brightness-0" : "h-8 w-auto"}
+    />
   );
 
   return (
-    <header className="overflow-x-clip border-b border-white/[0.06] bg-blue-dark">
+    <header
+      className={
+        isSimple
+          ? "border-b border-slate-200 bg-white"
+          : "overflow-x-clip border-b border-white/[0.06] bg-blue-dark"
+      }
+    >
       <Container className="max-w-6xl">
         <div
           className={

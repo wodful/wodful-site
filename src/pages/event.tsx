@@ -21,11 +21,11 @@ export default function EventDetails({
   );
 
   return (
-    <>
+    <div className="flex min-h-screen flex-col bg-slate-50 text-gray-900">
       <Header isSimple />
       <EventData accessCode={accessCode} />
       <Footer isSimple />
-    </>
+    </div>
   );
 }
 

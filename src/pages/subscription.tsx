@@ -21,11 +21,11 @@ export default function EventSubscriptions({
   );
 
   return (
-    <>
+    <div className="flex min-h-screen flex-col bg-slate-50 text-gray-900">
       <Header isSimple />
       <SubscriptionData accessCode={accessCode} />
       <Footer isSimple />
-    </>
+    </div>
   );
 }
 

@@ -60,7 +60,7 @@ export const EventData = ({ accessCode }: IEventData) => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-gray-900">
-      <div className="bg-blue-dark pb-6 pt-4 sm:pb-8">
+      <div className="pt-6 sm:pt-8">
         <Container>
           {event.banner ? (
             <EventBanner

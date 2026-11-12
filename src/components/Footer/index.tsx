@@ -3,6 +3,7 @@ import * as React from "react";
 import { WHATSAPP_URL } from "../../constants/whatsapp";
 import HeaderLogo from "../../images/wodful-logo.svg";
 import { Container } from "../ui/Container";
+import { HeroAtmosphere } from "../ui/HeroAtmosphere";
 
 interface IFooterProps {
   isSimple?: boolean;
@@ -26,33 +27,16 @@ const linkClass =
 export const Footer = ({ isSimple = false }: IFooterProps) => {
   const year = new Date().getFullYear();
 
-  if (isSimple) {
-    return (
-      <footer className="border-t border-slate-200 bg-white">
-        <Container>
-          <div className="flex flex-col items-center gap-3 py-5 sm:flex-row sm:justify-between sm:py-4">
-            <a
-              href="https://wodful.com"
-              className="inline-flex rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              <img
-                src={HeaderLogo}
-                alt="Wodful"
-                className="h-7 w-auto brightness-0"
-              />
-            </a>
-            <p className="m-0 text-center text-sm leading-none text-slate-500 sm:text-right">
-              © {year} Wodful — Gestão de competições
-            </p>
-          </div>
-        </Container>
-      </footer>
-    );
-  }
-
   return (
-    <footer className="border-t border-white/10 bg-blue-dark py-10 sm:py-8">
-      <Container>
+    <footer
+      className={
+        isSimple
+          ? "relative overflow-hidden border-t border-white/10 bg-blue-dark py-10 sm:py-8"
+          : "border-t border-white/10 bg-blue-dark py-10 sm:py-8"
+      }
+    >
+      {isSimple ? <HeroAtmosphere /> : null}
+      <Container className={isSimple ? "relative" : undefined}>
         <div className="flex flex-col items-center gap-8">
           {isSimple ? (
             <a

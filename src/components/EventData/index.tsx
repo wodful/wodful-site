@@ -6,6 +6,7 @@ import MapPin from "../../images/map-pin.svg";
 import { EventResponse } from "../../models/EventResponse";
 import { EventService } from "../../services/events";
 import { Container } from "../ui/Container";
+import { HeroAtmosphere } from "../ui/HeroAtmosphere";
 import { EVENT_BANNER_MAX_WIDTH_CLASS } from "../../constants/eventBanner";
 import { formatEventDateRange } from "../../utils/formatEventDateRange";
 import { EventBanner, EventBannerPlaceholder } from "./EventBanner";
@@ -60,8 +61,9 @@ export const EventData = ({ accessCode }: IEventData) => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-gray-900">
-      <div className="pt-6 sm:pt-8">
-        <Container>
+      <div className="relative overflow-hidden bg-blue-dark pb-6 pt-4 sm:pb-8">
+        <HeroAtmosphere />
+        <Container className="relative">
           {event.banner ? (
             <EventBanner
               src={getBannerUrl(event.banner)}

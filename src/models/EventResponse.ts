@@ -20,6 +20,7 @@ export interface Ticket {
   athleteTotal?: number;
   feePercent?: number;
   passFeeToAthlete?: boolean;
+  includesTshirt?: boolean;
   category: Category;
 }
 

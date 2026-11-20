@@ -155,6 +155,16 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
     []
   );
 
+  React.useEffect(() => {
+    if (!ticket || ticket.includesTshirt) return;
+    const members = ticket.category.members ?? 0;
+    for (let index = 0; index < members; index += 1) {
+      setValue(`participants.${index}.tShirtSize`, "Sem camiseta", {
+        shouldValidate: true,
+      });
+    }
+  }, [setValue, ticket]);
+
   const getEventTshirt = React.useCallback(async (access: string) => {
     setIsLoading(true);
     await new EventService()
@@ -329,6 +339,8 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
     [accessCode]
   );
 
+  const includesTshirt = ticket?.includesTshirt === true;
+
   const onSubmit = (subscription: IParticipantForm) => {
     if (fake_field !== "") {
       console.error("it's a bot!");
@@ -350,10 +362,7 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
           participant.affiliation ?? "",
           affiliations
         ),
-        tShirtSize:
-          tshirtConfigs.hasTshirt === "true"
-            ? participant.tShirtSize
-            : "Sem camiseta",
+        tShirtSize: includesTshirt ? participant.tShirtSize : "Sem camiseta",
       })),
       ticketId: ticket!.id,
       couponCode: couponCode?.trim() || undefined,
@@ -945,45 +954,43 @@ export const SubscriptionData = ({ accessCode }: ISubscriptionData) => {
                                       <FormField
                                         id={shirtId}
                                         label="Camiseta"
-                                        optional={
-                                          tshirtConfigs?.hasTshirt !== "true"
-                                        }
+                                        optional={!includesTshirt}
                                         error={
                                           participantErrors?.tShirtSize?.message
                                         }
                                       >
                                         <select
-                                          disabled={
-                                            tshirtConfigs?.hasTshirt === "false"
-                                          }
+                                          disabled={!includesTshirt}
                                           className={fieldInputClass(
                                             !!participantErrors?.tShirtSize
                                           )}
                                           {...register(
                                             `participants.${index}.tShirtSize`,
                                             {
-                                              required:
-                                                tshirtConfigs?.hasTshirt ===
-                                                "true"
-                                                  ? Validation.invalidEmpty
-                                                  : false,
-                                              disabled:
-                                                tshirtConfigs?.hasTshirt ===
-                                                "false",
+                                              required: includesTshirt
+                                                ? Validation.invalidEmpty
+                                                : false,
+                                              disabled: !includesTshirt,
                                             }
                                           )}
                                         >
-                                          <option value="">
-                                            {tshirtConfigs?.hasTshirt === "true"
-                                              ? "Selecione um tamanho"
-                                              : "Sem camiseta"}
-                                          </option>
-                                          {tshirtConfigs?.tShirtSizes?.map(
-                                            (size) => (
-                                              <option key={size} value={size}>
-                                                {size}
+                                          {includesTshirt ? (
+                                            <>
+                                              <option value="">
+                                                Selecione um tamanho
                                               </option>
-                                            )
+                                              {tshirtConfigs?.tShirtSizes?.map(
+                                                (size) => (
+                                                  <option key={size} value={size}>
+                                                    {size}
+                                                  </option>
+                                                )
+                                              )}
+                                            </>
+                                          ) : (
+                                            <option value="Sem camiseta">
+                                              Sem camiseta
+                                            </option>
                                           )}
                                         </select>
                                       </FormField>
